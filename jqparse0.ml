@@ -46,14 +46,13 @@ EXTEND
       ]
     | "=" NONA [
         e1 = exp ; "=" ; e2 = exp -> ExpAssign e1 e2
-      | e1 = exp ; "|=" ; e2 = exp -> ExpAssignOr e1 e2
       | e1 = exp ; "+=" ; e2 = exp -> ExpAssignAdd e1 e2
       | e1 = exp ; "-=" ; e2 = exp -> ExpAssignSub e1 e2
       | e1 = exp ; "*=" ; e2 = exp -> ExpAssignMul e1 e2
       | e1 = exp ; "/=" ; e2 = exp -> ExpAssignDiv e1 e2
-      | e1 = exp ; "|=" ; e2 = exp -> ExpAssignUpd e1 e2
       | e1 = exp ; "%=" ; e2 = exp -> ExpAssignMod e1 e2
       | e1 = exp ; "//=" ; e2 = exp -> ExpAssignDes e1 e2
+      | e1 = exp ; "|=" ; e2 = exp -> ExpAssignUpd e1 e2
       ]
     | "or" NONA [
         e1 = exp ; "or" ; e2 = exp -> ExpAnd e1 e2

@@ -4,11 +4,17 @@ NOT_OCAMLFIND=not-ocamlfind
 PACKAGES=bos,fmt,camlp5.extprint,camlp5.extend,camlp5.pprintf,pcre,yaml,pa_ppx.deriving_plugins.std,pa_ppx.base.link,pa_ppx.runtime,pa_ppx.testutils
 
 OBJ=lazy_reclist.cmo jqutil.cmo jqtypes.cmo jqparse0.cmo jq_examples.cmo
+OML=lazy_reclist.cmo jqutil.cmo jqtypes.cmo jq_examples.cmo
+RML=jqparse0.cmo
 
-all: $(OBJ)
+all: $(OBJ) jqtest
 
 test:: all
 	mkdir -p _build
+	./jqtest
+
+jqtest: $(OBJ) jqtest.cmo
+	$(OCAMLFIND) ocamlc $(DEBUG) -package $(PACKAGES),oUnit -linkpkg -linkall -syntax camlp5r $^ -o $@
 
 jqparse0.cmo: jqparse0.ml
 	$(OCAMLFIND) ocamlc $(DEBUG) -package $(PACKAGES) -syntax camlp5r -c $<
@@ -24,8 +30,11 @@ clean:
 
 depend::
 	$(OCAMLFIND) ocamldep $(DEBUG) -package $(PACKAGES) -syntax camlp5o \
-		lazy_reclist.ml jqutil.cmo \
+		$(OML) \
 		 > .depend.NEW
+	$(OCAMLFIND) ocamldep $(DEBUG) -package $(PACKAGES) -syntax camlp5r \
+		$(RML) \
+		 >> .depend.NEW
 	mv .depend.NEW .depend
 
 -include .depend
