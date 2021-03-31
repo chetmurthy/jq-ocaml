@@ -30,11 +30,15 @@ print_string "================ START ================\n";; flush stdout ;;
 
 #load "lazy_reclist.cmo";;
 #load "jqutil.cmo";;
+#load "jqtypes.cmo";;
+#load "jqparse0.cmo";;
 open Lazy_reclist ;;
 open Jqutil ;;
-
+open Jqtypes ;;
+open Jqparse0 ;;
+(*
 #use "jq_examples.ml";;
-
+*)
 #print_length 1000;;
 #print_depth 1000;;
 (*

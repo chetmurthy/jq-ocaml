@@ -13,7 +13,13 @@ Printexc.register_printer print_exn ;
 
 value input_file = ref "" ;
 
-value g = Grammar.gcreate (Plexer.gmake());
+value lexer = do {
+  Plexer.dollar_for_antiquotation.val := False ;
+  let rv = Plexer.gmake() in
+  Plexer.dollar_for_antiquotation.val := True ;
+  rv
+} ;
+value g = Grammar.gcreate lexer;
 value (exp : Grammar.Entry.e exp) = Grammar.Entry.create g "exp";
 value (exp_eoi : Grammar.Entry.e exp) = Grammar.Entry.create g "exp_eoi";
 
@@ -22,8 +28,11 @@ EXTEND
     exp exp_eoi
     ;
 
-  exp: [ [
+  exp: [
+      "simple" [
         "." -> ExpDot
+      | ".." -> ExpDotDot
+      | "$" ; id = LIDENT -> ExpDataVar id
     ] ]
   ;
   exp_eoi : [ [ e = exp ; EOI -> e ] ] ;
