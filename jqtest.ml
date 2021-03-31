@@ -26,21 +26,25 @@ let assert_raises_exn_pattern pattern f =
     )
     f
 
+let of_string_exn s = s |> parse_string parse_exp_eoi
 
+let parsing = "parsing" >::: [
+    "simple" >:: (fun ctxt ->
+        assert_equal ExpDot (of_string_exn ".")
+      )
+  ]
 
-
-let simple = "simple" >::: [
+let execute = "execute" >::: [
     "simple" >:: (fun ctxt ->
         ()
       )
   ]
 
-let of_string_exn s = s |> parse_string parse_exp_eoi
-
 
 
 let tests = "all" >::: [
-    simple
+    parsing
+  ; execute
 ]
 
 if not !Sys.interactive then
