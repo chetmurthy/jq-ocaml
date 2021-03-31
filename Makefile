@@ -3,7 +3,7 @@ OCAMLFIND=ocamlfind
 NOT_OCAMLFIND=not-ocamlfind
 PACKAGES=bos,fmt,camlp5.extprint,camlp5.extend,camlp5.pprintf,pcre,yaml,pa_ppx.deriving_plugins.std,pa_ppx.base.link,pa_ppx.runtime,pa_ppx.testutils
 
-OBJ=lazy_reclist.cmo jqutil.cmo jqtypes.cmo jqparse0.cmo jq_examples.cmo
+OBJ=lazy_reclist.cmo jqutil.cmo jqtypes.cmo jqparse0.cmo jqinterp.cmo jq_examples.cmo
 OML=lazy_reclist.cmo jqutil.cmo jqtypes.cmo jq_examples.cmo
 RML=jqparse0.cmo
 

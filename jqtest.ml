@@ -2,8 +2,10 @@ open OUnit2
 open OUnitTest
 open Pa_ppx_testutils
 
+open Lazy_reclist
 open Jqtypes
 open Jqparse0
+open Jqinterp
 
 Pa_ppx_base.Pp_MLast.Ploc.pp_loc_verbose := true ;;
 
@@ -27,6 +29,14 @@ let assert_raises_exn_pattern pattern f =
     f
 
 let of_string_exn s = s |> parse_string parse_exp_eoi
+let exec s js =
+  let e = of_string_exn s in
+  js
+  |> List.map Yojson.Basic.from_string
+  |> of_list
+  |> interp e
+  |> to_list
+  |> List.map Yojson.Basic.to_string
 
 let parsing = "parsing" >::: [
     "simple" >:: (fun ctxt ->
@@ -34,9 +44,26 @@ let parsing = "parsing" >::: [
       )
   ]
 
+type json =
+    [
+    | `Null
+    | `Bool of bool
+    | `Int of int
+    | `Float of float
+    | `String of string
+    | `Assoc of (string * json) list
+    | `List of json list
+    ] [@@deriving show,eq]
+
+type json_list = json list [@@deriving show,eq]
+
 let execute = "execute" >::: [
-    "simple" >:: (fun ctxt ->
-        ()
+    "empty" >:: (fun ctxt ->
+        assert_equal [] (exec "." [])
+      )
+  ; "simple" >:: (fun ctxt ->
+        assert_equal
+          ["null"] (exec "." ["null"])
       )
   ]
 
