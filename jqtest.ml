@@ -125,6 +125,11 @@ let parsing = "parsing" >:::
           (ExpReduce ((ExpConcat ((ExpInt 1), (ExpInt 2))), "n", (ExpInt 0),
                       (ExpAdd (ExpDot, (ExpDataVar "n")))))
           (of_string_exn {| reduce (1,2) as $n ( 0; . + $n) |})
+      ; assert_equal
+          (ExpForeach ((ExpConcat ((ExpInt 1), (ExpInt 2))), "n", (ExpInt 0),
+                       (ExpAdd (ExpDot, (ExpDataVar "n"))),
+                       (ExpCollect (ExpConcat ((ExpDataVar "n"), ExpDot)))))
+          (of_string_exn {| foreach (1,2) as $n ( 0; . + $n; [$n, .]) |})
       )
   ]
 
@@ -214,6 +219,7 @@ let execute = "execute" >:::
       ; assert_equal ["1"; "2"; "2"; "3"; "3"; "4"]
           (exec {|(.i,.i+1) as $x | $x|} [{| {"i": 1} |}; {| {"i": 2} |}; {| {"i": 3} |}])
       ; assert_equal ["3"] (exec {|reduce (1,2) as $n ( 0; . + $n)|} [{|null|}])
+      ; assert_equal ["[1,1]"; "[2,3]"; "[3,6]"] (exec {| foreach (1,2,3) as $n ( 0; . + $n; [$n, .]) |} [{|0|}])
       )
   ; "simplest-2" >:: (fun ctxt ->
         ()

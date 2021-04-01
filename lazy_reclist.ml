@@ -102,9 +102,20 @@ module EagerList = struct
     List.fold_left (fun jv j ->
         last (f jv j))
       jinit ll
-end
-(*
-include EagerList
-*)
-include LazyList
 
+  let foreach f update jinit ll =
+    let rec frec (jv, ll) =
+      match match_ll ll with
+        None -> nil
+      | Some(j, ll) ->
+        let newjv = last (f jv j) in
+        let updv = update newjv j in
+        cons_ll updv (frec (newjv, ll))
+    in frec (jinit, ll)
+    
+end
+
+include EagerList
+(*
+include LazyList
+*)

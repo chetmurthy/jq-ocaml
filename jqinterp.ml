@@ -83,13 +83,35 @@ let rec interp0 fenv denv e (j : t) : (t, t ll_t) choice =
         |> interp0 fenv denv e
         |> of_choice
         |> reduce (fun jv j' ->
-            j'
-            |> interp0 fenv ((id, jv)::denv) step
+            jv
+            |> interp0 fenv ((id, j')::denv) step
             |> of_choice)
           jinit
         |> inLeft
       )
     |> inRight
+
+  | ExpForeach(e, id, init, step, update) ->
+    j
+    |> interp0 fenv denv init
+    |> of_choice
+    |> map (fun jinit ->
+        j
+        |> interp0 fenv denv e
+        |> of_choice
+        |> foreach (fun jv j' ->
+            jv
+            |> interp0 fenv ((id, j')::denv) step
+            |> of_choice)
+          (fun jv j' ->
+             jv
+             |> interp0 fenv ((id, j')::denv) update
+             |> of_choice)
+          jinit
+        |> inRight
+      )
+    |> inRight
+    
 
   | ExpSeq(e1,e2) ->
     j
