@@ -290,7 +290,7 @@ let add_function fname code =
 
 add_function "length"
   (function [] -> function
-        `String s -> Left (`Int(String.length s))
+        `String s -> Left (`Int(utf8_length s))
       | `List l -> Left (`Int(List.length l))
       | `Assoc l -> Left (`Int(List.length l))
       | `Null -> Left (`Int 0)

@@ -162,6 +162,7 @@ let execute = "execute" >:::
       ; assert_equal [{|["x","z"]|}] (exec {|.a / .b|} [{| {"a": "xyz", "b":"y"} |}])
       ; assert_equal [{|{"a":"y","b":"xyz"}|}] (exec {|{b: .a, a: .b}|} [{| {"a": "xyz", "b":"y"} |}])
       ; assert_equal ["3"] (exec {|. | length|} [{| "abc" |}])
+      ; assert_equal ["4"] (exec {|. | length|} [{| "abc\u263A" |}])
       ; assert_equal ["3"] (exec {|. | length|} [{| [1,2,3] |}])
       ; assert_equal ["3"] (exec {|. | length|} [{| {"a":1, "b":2, "c":4} |}])
       ; assert_equal ["0"] (exec {|. | length|} [{| null |}])

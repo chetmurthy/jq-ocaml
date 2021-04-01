@@ -104,3 +104,10 @@ let object_mul l1 l2 =
       else
         (h2, v2)::(mrec (l1, t2))
   in mrec (l1,l2)
+
+let utf8_length s =
+  let open Uutf in
+  String.fold_utf_8 (fun n _ -> function
+        `Uchar _ -> n+1
+      | `Malformed _ -> raise (JQException "length: malformed UTF8 string"))
+    0 s
