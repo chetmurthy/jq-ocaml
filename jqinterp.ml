@@ -296,3 +296,23 @@ add_function "length"
       | `Null -> Left (`Int 0)
   )
 ;;
+
+add_function "utf8bytelength"
+  (function [] -> function
+        `String s -> Left (`Int(String.length s))
+  )
+;;
+
+add_function "keys"
+  (function [] -> function
+        `Assoc l -> Left (`List(List.sort Stdlib.compare (List.map (fun (k,_) -> `String k) l)))
+      | `List l -> Left (`List(List.mapi (fun i _ -> `Int i) l))
+  )
+;;
+
+add_function "keys_unsorted"
+  (function [] -> function
+        `Assoc l -> Left (`List(List.map (fun (k,_) -> `String k) l))
+      | `List l -> Left (`List(List.mapi (fun i _ -> `Int i) l))
+  )
+;;
