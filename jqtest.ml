@@ -200,10 +200,13 @@ let execute = "execute" >:::
       ; assert_equal [{|{"i":1}|}] (exec {|select(.i==1)|} [{| {"i": 1} |}; {| {"i": 2} |}; {| {"i": 3} |}])
       ; assert_equal ["true"; "true"] (exec {|true|} [{| {"i": 1} |}; {| {"i": 2} |}])
       ; assert_equal [{|{"i":1}|}; {|{"i":1}|}; {|{"i":2}|}; {|{"i":3}|}] (exec {|select(true, .i==1)|} [{| {"i": 1} |}; {| {"i": 2} |}; {| {"i": 3} |}])
+      ; assert_equal [{|{"ab":59}|}] (exec {|{("a"+"b"): 59}|} ["null"])
+      ; assert_equal [{|{"foo":42}|}] (exec {|{foo: .bar}|} [{|{"bar":42, "baz":43}|}])
       )
   ; "simplest-2" >:: (fun ctxt ->
         ()
-      ; assert_equal [{|{"i":1}|}; {|{"i":2}|}] (exec {|select(. <= {"i":2})|} [{| {"i": 1} |}; {| {"i": 2} |}; {| {"i": 3} |}])
+      ; assert_equal [{|{"title":"Boss","user":"Joe"}|}] (exec {|{user, title}|} [{|{user: "Joe", title: "Boss", id: 32}|}])
+      ; assert_equal [{|0|}] (exec {|0|} [{|0|}])
       )
   ; "errors" >:: (fun ctxt ->
         assert_raises_exn_pattern
