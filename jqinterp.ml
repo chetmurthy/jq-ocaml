@@ -100,6 +100,18 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
     with JQException _ -> nil |> inRight
   end
 
+  | ExpAlt (e1, e2) -> begin
+    try
+      let l = j
+              |> interp0 e1
+              |> of_choice
+              |> to_list in
+      l |> of_list |> inRight
+    with JQException _ -> j |> interp0 e2
+  end
+
+    
+
   | e -> failwith Fmt.(str "interp0: unrecognized exp %a" pp_exp e)
 
 let interp e j = interp0 e j

@@ -82,6 +82,8 @@ let parsing = "parsing" >:::
           (of_string_exn {|.["a"]|})
       ; assert_equal (ExpQuestion (ExpDotField "a"))
           (of_string_exn {|.a?|})
+      ; assert_equal (ExpAlt ((ExpQuestion (ExpDotField "a")), (ExpInt 1)))
+          (of_string_exn {|.a? // 1|})
       )
   ]
 
@@ -110,10 +112,11 @@ let execute = "execute" >:::
       ; assert_equal ["1"] (exec {|(1,.a?)|} [{| {"b": 1} |}])
       ; assert_equal [] (exec {|.a?|} [{| {"b":2} |}])
       ; assert_equal [] (exec {|(1,.a)?|} [{| {"b": 1} |}])
+      ; assert_equal ["2"] (exec {|.a // 2|} [{| {"b": 1} |}])
       )
   ; "simplest-2" >:: (fun ctxt ->
         ()
-      ; assert_equal [] (exec {|(1,.a)?|} [{| {"b": 1} |}])
+      ; assert_equal ["2"] (exec {|.a // 2|} [{| {"b": 1} |}])
       )
   ; "errors" >:: (fun ctxt ->
         assert_raises_exn_pattern
