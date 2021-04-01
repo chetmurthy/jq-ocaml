@@ -118,6 +118,9 @@ let parsing = "parsing" >:::
       ; assert_equal
           (ExpEq ((ExpDotField "i"), (ExpInt 1)))
           (of_string_exn {|.i==1|})
+      ; assert_equal
+          (ExpDataBind ((ExpString "foo"), "x"))
+          (of_string_exn {| "foo" as $x |})
       )
   ]
 
@@ -202,10 +205,14 @@ let execute = "execute" >:::
       ; assert_equal [{|{"i":1}|}; {|{"i":1}|}; {|{"i":2}|}; {|{"i":3}|}] (exec {|select(true, .i==1)|} [{| {"i": 1} |}; {| {"i": 2} |}; {| {"i": 3} |}])
       ; assert_equal [{|{"ab":59}|}] (exec {|{("a"+"b"): 59}|} ["null"])
       ; assert_equal [{|{"foo":42}|}] (exec {|{foo: .bar}|} [{|{"bar":42, "baz":43}|}])
+      ; assert_equal [{|{"title":"Boss","user":"Joe"}|}] (exec {|{user, title}|} [{|{user: "Joe", title: "Boss", id: 32}|}])
+      ; assert_equal [{|"foo"|}] (exec {|"foo" as $x | $x|} [{|0|}])
+      ; assert_equal ["1"; "2"; "2"; "3"; "3"; "4"]
+          (exec {|(.i,.i+1) as $x | $x|} [{| {"i": 1} |}; {| {"i": 2} |}; {| {"i": 3} |}])
       )
   ; "simplest-2" >:: (fun ctxt ->
         ()
-      ; assert_equal [{|{"title":"Boss","user":"Joe"}|}] (exec {|{user, title}|} [{|{user: "Joe", title: "Boss", id: 32}|}])
+      ; assert_equal [{|0|}] (exec {|0|} [{|0|}])
       ; assert_equal [{|0|}] (exec {|0|} [{|0|}])
       )
   ; "errors" >:: (fun ctxt ->

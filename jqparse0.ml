@@ -111,10 +111,7 @@ EXTEND
         | e = exp ; "[" ; "]" -> ExpBrackets e
         | e = exp ; "[:" ; e2 = exp ; "]" -> ExpSlice e None (Some e2)
         | e = exp ; "." ; "[" ; e2 = exp ; "]" -> ExpDeref e e2
-        | n = INT -> ExpInt (int_of_string n)
-        | "true" -> ExpBool True
-        | "false" -> ExpBool False
-        | n = FLOAT -> ExpFloat (float_of_string n)
+        | e = exp ; "as" ; "$" ; id = LIDENT -> ExpDataBind e id
       ]
     | "simple" [
         "." -> ExpDot
@@ -131,6 +128,10 @@ EXTEND
       | "{" ; l = LIST0 dict_pair SEP "," ; "}" -> ExpDict l
       | f=LIDENT ; "(" ; l = LIST1 exp SEP ";" ; ")" -> ExpFuncall f l
       | f=LIDENT -> ExpFuncall f []
+      | n = INT -> ExpInt (int_of_string n)
+      | "true" -> ExpBool True
+      | "false" -> ExpBool False
+      | n = FLOAT -> ExpFloat (float_of_string n)
     ]
  ]
   ;

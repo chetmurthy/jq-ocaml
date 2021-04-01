@@ -49,4 +49,5 @@ type exp =
   | ExpDesAlt of exp * exp
   | ExpFuncall of string * exp list
   | ExpFuncDef of (string * string list * exp) * exp
+  | ExpDataBind of exp * string
  [@@deriving show { with_path = false },eq]
