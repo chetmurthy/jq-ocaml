@@ -80,6 +80,8 @@ let parsing = "parsing" >:::
           (of_string_exn "(.a,.b)")
       ; assert_equal (ExpDeref (ExpDot, (ExpString "a")))
           (of_string_exn {|.["a"]|})
+      ; assert_equal (ExpQuestion (ExpDotField "a"))
+          (of_string_exn {|.a?|})
       )
   ]
 
@@ -98,6 +100,7 @@ let execute = "execute" >:::
       ; assert_equal [{|{"a":"d","b":"c"}|}] (exec "{a: .b, b: .a}" [{| {"a":"c", "b":"d"} |}])
       ; assert_equal [{|{"a":"d","b":"c"}|}] (exec "{a: .b.a, b: .a.b}" [{| {"a":{"b": "c"}, "b":{"a": "d"}} |}])
       ; assert_equal ["1";"2";"3"] (exec ".a[]" [{| {"a":[1,2,3]} |}])
+      ; assert_equal ["1";"2"] (exec ".[]" [{| {"a":1,"b":2} |}])
       ; assert_equal [{|"c"|}] (exec ".a | .b" [{| {"a":{"b":"c"}} |}])
       ; assert_equal ["1";"2"] (exec ".[] | .a" [{| [{"a":1},{"a":2}] |}])
       ; assert_equal [{|"c"|}] (exec ".a | .b" [{| {"a":{"b":"c"}} |}])
@@ -107,15 +110,18 @@ let execute = "execute" >:::
       )
   ; "simplest-2" >:: (fun ctxt ->
         ()
-      ; assert_equal ["1"] (exec {|.["a"]|} [{| {"a":1, "b":2} |}])
+      ; assert_equal ["1"] (exec {|.a?|} [{| {"a":1} |}])
       )
   ; "errors" >:: (fun ctxt ->
         assert_raises_exn_pattern
-          "interp: cannot deref object with non-string"
+          "interp0: cannot deref object with non-string"
           (fun () -> exec ".[0]" ["{}"])
       ; assert_raises_exn_pattern
-          "interp: cannot deref array with non-int"
+          "interp0: cannot deref array with non-int"
           (fun () -> exec {|.["a"]|} ["[]"])
+      ; assert_raises_exn_pattern
+          "array_list: not an array"
+          (fun () -> exec {|.[]|} ["1"])
       )
   ; "." >:: (fun ctxt ->
         assert_equal
