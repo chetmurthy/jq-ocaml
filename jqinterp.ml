@@ -8,7 +8,7 @@ open Jqtypes
 let inRight ll = Right ll
 let inLeft v = Left v
 
-let functions = ref ([] : (string * (t list -> t ->  (t, t ll_t) choice)) list)
+let functions = ref ([] : (string * ((t -> (t,t ll_t) choice) list -> t ->  (t, t ll_t) choice)) list)
 
 let rec interp0  e (j : t) : (t, t ll_t) choice =
   match e with
@@ -241,28 +241,14 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
       e1 e2 j
 
   | ExpFuncall(f, l) ->
-    let rec edrec l j = match l with
-        [] ->
-        j |> (fun j -> inLeft (`List []))
-
-      | (ve::l) ->
-        j
-        |> interp0 ve |> of_choice |> map (fun v ->
-            j
-            |> edrec l
-            |> of_choice
-            |> map (fun (`List l : t) ->
-                Left(`List (v::l)))
-            |> inRight
-          )
-        |> inRight
+    let argcl = List.map interp0 l in
+    let code =
+      match List.assoc f !functions with
+        f -> f
+      | exception Not_found -> failwith Fmt.(str "interp: function %a not found" Dump.string f)
     in
-    let code = List.assoc f !functions in
     j
-    |> edrec l
-    |> of_choice
-    |> map (function `List l -> j |> code l)
-    |> inRight
+    |> code argcl
 
 
   | e -> failwith Fmt.(str "interp0: unrecognized exp %a" pp_exp e)
@@ -286,6 +272,28 @@ let interp e j = interp0 e j
 
 let add_function fname code =
   functions := (fname, code):: !functions
+;;
+
+
+let interp_tuple l j : (t, t ll_t) choice =
+  let rec edrec l (j : t) = match l with
+      [] ->
+      j |> (fun j -> inLeft (`List []))
+
+    | (f::l) ->
+      j
+      |> f |> of_choice |> map (fun v ->
+          j
+          |> edrec l
+          |> of_choice
+          |> map (fun (`List l : t) ->
+              Left(`List (v::l)))
+          |> inRight
+        )
+      |> inRight
+  in
+  j
+  |> edrec l
 ;;
 
 add_function "length"
@@ -319,30 +327,44 @@ add_function "keys_unsorted"
 
 add_function "has"
   (function
-      [`String k] ->
+      [f0] ->
       (function
-          `Assoc l ->
-          Left(`Bool (List.mem_assoc k l))
-      )
-    | [`Int n] ->
-      (function
-          `List l ->
-          Left (`Bool (n >= 0 && n < List.length l))
+          (`Assoc l as j) ->
+          j
+          |> f0
+          |> of_choice
+          |> map (function `String k ->
+              Left(`Bool (List.mem_assoc k l)))
+          |> inRight
+        | (`List l as j) ->
+          j
+          |> f0
+          |> of_choice
+          |> map (function `Int n ->
+              Left (`Bool (n >= 0 && n < List.length l)))
+          |> inRight
       )
   )
 ;;
 
 add_function "in"
   (function
-      [`Assoc l] ->
+      [f0] ->
       (function
-          `String k ->
-          Left(`Bool (List.mem_assoc k l))
-      )
-    | [`List l] ->
-      (function
-          `Int n ->
-          Left (`Bool (n >= 0 && n < List.length l))
+          (`String k as j) ->
+          j
+          |> f0
+          |> of_choice
+          |> map (function `Assoc l ->
+              Left(`Bool (List.mem_assoc k l)))
+          |> inRight
+        | (`Int n as j) ->
+          j
+          |> f0
+          |> of_choice
+          |> map (function `List l ->
+              Left (`Bool (n >= 0 && n < List.length l)))
+          |> inRight
       )
   )
 ;;
