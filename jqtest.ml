@@ -173,6 +173,8 @@ let execute = "execute" >:::
       ; assert_equal [{|["a","b","c"]|}] (exec {|. | keys_unsorted|} [{| {"a":1, "b":2, "c":4} |}])
       ; assert_equal [{|[0,1,2]|}] (exec {|. | keys_unsorted|} [{| [1,2,3] |}])
       ; assert_equal ["true"; "false"] (exec {|has(.a,.c)|} [{| {"a":"b", "c":"e", "b":1} |}])
+      ; assert_equal ["false"] (exec {|has(1)|} [{| [] |}])
+      ; assert_equal ["true"; "false"; "false"; "false"] (exec {|has(1,-1,-10,10)|} [{| [1,2] |}])
       )
   ; "simplest-2" >:: (fun ctxt ->
         ()

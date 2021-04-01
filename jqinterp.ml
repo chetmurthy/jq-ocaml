@@ -318,8 +318,16 @@ add_function "keys_unsorted"
 ;;
 
 add_function "has"
-  (function [`String k] -> function
-        `Assoc l ->
-        Left(`Bool (List.mem_assoc k l))
+  (function
+      [`String k] ->
+      (function
+          `Assoc l ->
+          Left(`Bool (List.mem_assoc k l))
+      )
+    | [`Int n] ->
+      (function
+          `List l ->
+          Left (`Bool (n >= 0 && n < List.length l))
+      )
   )
 ;;
