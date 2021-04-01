@@ -136,6 +136,10 @@ let parsing = "parsing" >:::
                ((ExpGt (ExpDot, (ExpInt 5))), (ExpString "b"))],
               (ExpString "c")))
           (of_string_exn {| if . > 10 then "a" elif . > 5 then "b" else "c" end |})
+      ; assert_equal
+          ExpEmpty
+          (of_string_exn {| empty |})
+          
       )
   ]
 
@@ -150,11 +154,13 @@ let execute = "execute" >:::
       ; assert_equal ["0"] (exec "0" ["null"])
       ; assert_equal [{|"b"|}] (exec ".a" [{| {"a":"b"} |}])
       ; assert_equal ["null"] (exec ".b" [{| {"a":"b"} |}])
+      ; assert_equal ["null"] (exec ".b" [{| null |}])
       ; assert_equal [{|{}|}] (exec "{}" [{| {} |}])
       ; assert_equal [{|{"a":"d"}|}] (exec "{a: .b}" [{| {"b":"d"} |}])
       ; assert_equal [{|{"a":"d","b":"c"}|}] (exec "{a: .b, b: .a}" [{| {"a":"c", "b":"d"} |}])
       ; assert_equal [{|{"a":"d","b":"c"}|}] (exec "{a: .b.a, b: .a.b}" [{| {"a":{"b": "c"}, "b":{"a": "d"}} |}])
       ; assert_equal ["1"] (exec ".[0]" [{| [1,2,3] |}])
+      ; assert_equal ["null"] (exec ".[0]" [{| null |}])
       ; assert_equal ["3"] (exec ".[-1]" [{| [1,2,3] |}])
       ; assert_equal ["null"] (exec ".[-10]" [{| [1,2,3] |}])
       ; assert_equal ["null"] (exec ".[10]" [{| [1,2,3] |}])
@@ -238,6 +244,7 @@ let execute = "execute" >:::
       ; assert_equal ["[1,1]"; "[2,3]"; "[3,6]"; "[4,10]"; "[5,15]"] (exec {|label $here | foreach (1,2,3,4,5,10) as $n ( 0; if $n >= 10 then break $here else . + $n end; [$n, .])|} [{|0|}])
       ; assert_equal ["[1,1]"; "[2,3]"; "[3,6]"; "[4,10]"; "[5,15]"] (exec {|label $here | foreach (1,2,3,4,5) as $n ( 0; . + $n; if $n >= 10 then break $here else [$n, .] end)|} [{|0|}])
       ; assert_equal ["[1,1]"; "[2,3]"; "[3,6]"; "[4,10]"; "[5,15]"] (exec {|label $here | foreach (1,2,3,4,5,10) as $n ( 0; . + $n; if $n >= 10 then break $here else [$n, .] end)|} [{|0|}])
+      ; assert_equal [] (exec {|empty|} [{|0|}; {|0|}])
       )
   ; "simplest-2" >:: (fun ctxt ->
         ()

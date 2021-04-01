@@ -20,6 +20,7 @@ let object_field fname : Yojson.Basic.t -> Yojson.Basic.t = function
       v -> v
       | exception Not_found -> `Null
     end
+  | `Null -> `Null
   | _ -> raise (JQException "object_field: not an object")
 
 let array_deref n : Yojson.Basic.t -> Yojson.Basic.t = function
@@ -28,6 +29,8 @@ let array_deref n : Yojson.Basic.t -> Yojson.Basic.t = function
     let n = if n < 0 then alen + n else n in
     if n < 0 || n >= alen then `Null
     else List.nth l n
+
+  | `Null -> `Null
 
   | _ -> raise (JQException "array_deref: not an array")
 

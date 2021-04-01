@@ -121,6 +121,7 @@ EXTEND
       | "." ; f=STRING -> ExpDotField f
       | ".." -> ExpRecurse
       | "$" ; id = LIDENT -> ExpDataVar id
+      | "empty" -> ExpEmpty
       | "break" ; "$" ; l=LIDENT -> ExpBreak l
       | "label" ; "$" ; l=LIDENT -> ExpLabel l
       | s = STRING -> ExpString s

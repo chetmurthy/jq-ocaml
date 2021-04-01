@@ -17,6 +17,8 @@ let rec interp0 fenv denv benv e (j : t) : (t, t ll_t) choice =
   | ExpBool b -> Right (of_list [`Bool b])
   | ExpString s -> Right (of_list [`String s])
 
+  | ExpEmpty -> Right nil
+
   | ExpDotField f ->
     j |> object_field  f |> inLeft
 
@@ -158,7 +160,9 @@ let rec interp0 fenv denv benv e (j : t) : (t, t ll_t) choice =
         |> map (fun j2 ->
             (match (j1, j2) with
                (`Assoc _, `String s) -> object_field  s j1
+             | (`Null, `String _) -> `Null
              | (`List _, `Int n) -> array_deref  n j1
+             | (`Null, `Int n) -> `Null
              | (`Assoc _, _) ->
                raise (JQException "interp0: cannot deref object with non-string")
              | (`List _, _) ->

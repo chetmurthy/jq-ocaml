@@ -55,5 +55,6 @@ type exp =
   | ExpForeach of exp * string * exp * exp * exp
   | ExpLabel of string
   | ExpCond of (exp * exp) list * exp
+  | ExpEmpty
 
  [@@deriving show { with_path = false },eq]
