@@ -14,18 +14,6 @@ let rec interp e (j : t) : (t, t ll_t) choice =
   | ExpInt n -> Right (of_list [`Int n])
   | ExpString s -> Right (of_list [`String s])
 
-  | ExpDeref (e1, e2) ->
-    j
-    |> interp e1
-    |> of_choice
-    |> map (function (j' : t) ->
-        j
-        |> interp e2 |> of_choice
-        |> map (function (`Int n : t) -> Left (array_deref n j'))
-        |> inRight
-      )
-  |> inRight
-
   | ExpDotField f ->
     j |> object_field f |> inLeft
 
@@ -71,5 +59,31 @@ let rec interp e (j : t) : (t, t ll_t) choice =
     |> of_choice
     |> to_list
     |> (fun l -> Left(`List l))
+
+  | ExpConcat(e1,e2) ->
+    j
+    |> interp e1
+    |> of_choice
+    |> (fun ll1 -> j
+                   |> interp e2
+                   |> of_choice
+                   |> (fun ll2 -> Right(cons_ll ll1 (cons_ll ll2 nil))))
+
+  | ExpDeref(e1, e2) ->
+    j
+    |> interp e1
+    |> of_choice
+    |> map (fun j1 ->
+        j
+        |> interp e2
+        |> of_choice
+        |> map (fun j2 ->
+            (match (j1, j2) with
+               (`Assoc _, `String s) -> object_field s j1
+             | (`List _, `Int n) -> array_deref n j1)
+            |> inLeft)
+        |> inRight)
+    |> inRight
+
 
   | e -> failwith Fmt.(str "interp: unrecognized exp %a" pp_exp e)
