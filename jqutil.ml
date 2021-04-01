@@ -5,10 +5,13 @@ open Jqtypes
 
 open Lazy_reclist
 
+let sort_object_keys l1 =
+  List.sort (fun (a,_) (b,_) -> Stdlib.compare a b) l1
+
 let canon_json j =
   let rec crec = function
       `List l -> `List (List.map crec l)
-    | `Assoc l -> `Assoc (List.sort (fun (a,_) (b,_) -> Stdlib.compare a b) (List.map (fun (k,v) -> (k, crec v)) l))
+    | `Assoc l -> `Assoc (sort_object_keys (List.map (fun (k,v) -> (k, crec v)) l))
     | v -> v
   in crec j
 
@@ -77,3 +80,27 @@ let slice n m (l : t list) =
 
 let array_sub l1 l2 =
   List.filter (fun x -> not (List.mem x l2)) l1
+
+let string_mul s n =
+  let rec mrec acc = function
+    0 -> acc
+    | n -> mrec (s::acc) (n-1)
+  in if n <= 0 then `Null
+  else `String(String.concat "" (mrec [] n))
+
+let object_mul l1 l2 =
+  let rec mrec = function
+      ([], []) -> []
+    | (l, []) -> l
+    | ([], l) -> l
+    | (((h1, v1)::t1 as l1), ((h2, v2)::t2 as l2)) ->
+      if h1 = h2 then
+        match (v1,v2) with
+          (`Assoc v1, `Assoc v2) ->
+          (h1,`Assoc (mrec (v1, v2)))::(mrec (t1,t2))
+        | _ -> (h2,v2)::(mrec (t1, t2))
+      else if h1 < h2 then
+        (h1, v1)::(mrec (t1, l2))
+      else
+        (h2, v2)::(mrec (l1, t2))
+  in mrec (l1,l2)

@@ -149,6 +149,12 @@ let execute = "execute" >:::
       ; assert_equal ["0.0"] (exec {|.a % .b|} [{| {"a": 1, "b":1.0} |}])
       ; assert_equal ["[3]"] (exec {|.a - .b|} [{| {"a": [1,2,3], "b":[1,2]} |}])
       ; assert_equal ["[]"] (exec {|.a - .b|} [{| {"a": [1,2,3], "b":[1,2,3]} |}])
+      ; assert_equal [{|"xx"|}] (exec {|.a * .b|} [{| {"a": "x", "b":2.99} |}])
+      ; assert_equal [{|null|}] (exec {|.a * .b|} [{| {"a": "x", "b":-1} |}])
+      ; assert_equal [{|{"k":{"a":0,"b":2,"c":3}}|}]
+          (exec {|{"k": {"a": 1, "b": 2}} * {"k": {"a": 0,"c": 3}}|} [{| null |}])
+      ; assert_equal [{|["x","z"]|}] (exec {|.a / .b|} [{| {"a": "xyz", "b":"y"} |}])
+      ; assert_equal [{|{"a":"y","b":"xyz"}|}] (exec {|{b: .a, a: .b}|} [{| {"a": "xyz", "b":"y"} |}])
       )
   ; "simplest-2" >:: (fun ctxt ->
         ()

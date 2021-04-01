@@ -20,24 +20,31 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
   | ExpField (e,f) ->
     j |> interp0  e |> of_choice |> map (fun j -> j |> object_field  f |> inLeft) |> inRight
 
-  | ExpDict [] ->
-     j |> (fun j -> inLeft (`Assoc []))
+  | ExpDict l ->
+    let rec edrec l j = match l with
+        [] ->
+        j |> (fun j -> inLeft (`Assoc []))
 
-  | ExpDict ((ke,ve)::l) ->
-    j
-    |> interp0  ke
-    |> of_choice
-    |> map (fun (`String k : t) -> j |> interp0  ve |> of_choice |> map (fun v ->
+      | ((ke,ve)::l) ->
         j
-        |> interp0  (ExpDict l)
+        |> interp0  ke
         |> of_choice
-        |> map (fun (`Assoc l : t) ->
-            Left(`Assoc ((k,v)::l)))
+        |> map (fun (`String k : t) -> j |> interp0  ve |> of_choice |> map (fun v ->
+            j
+            |> edrec l
+            |> of_choice
+            |> map (fun (`Assoc l : t) ->
+                Left(`Assoc ((k,v)::l)))
+            |> inRight
+          )
+                                       |> inRight
+          )
         |> inRight
-      )
-                                   |> inRight
-      )
-    |> inRight
+    in j
+       |> edrec l
+       |> of_choice
+       |> map (function `Assoc l -> Left(`Assoc (sort_object_keys l)))
+       |> inRight
 
   | ExpBrackets e ->
     j
@@ -201,6 +208,9 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
         | (`Float n, `Int m) -> `Float(n *. float_of_int m)
         | (`Int n, `Float m) -> `Float(float_of_int n *. m)
         | (`Float n, `Float m) -> `Float(n *. m)
+        | (`String s, `Int n) -> string_mul s n
+        | (`String s, `Float n) -> string_mul s (Float.to_int n)
+        | (`Assoc l1, `Assoc l2) -> `Assoc (object_mul l1 l2)
       )
       e1 e2 j
 
@@ -214,6 +224,7 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
         | (`Float n, `Int m) -> `Float(div_float n (float_of_int m))
         | (`Int n, `Float m) -> `Float(div_float (float_of_int n) m)
         | (`Float n, `Float m) -> `Float(div_float n m)
+        | (`String s1, `String s2) -> `List(Str.(split (regexp s2) s1) |> List.map (fun s -> `String s))
       )
       e1 e2 j
 
