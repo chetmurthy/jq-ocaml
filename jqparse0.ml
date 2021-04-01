@@ -111,6 +111,8 @@ EXTEND
         | e = exp ; "[:" ; e2 = exp ; "]" -> ExpSlice e None (Some e2)
         | e = exp ; "." ; "[" ; e2 = exp ; "]" -> ExpDeref e e2
         | n = INT -> ExpInt (int_of_string n)
+        | "true" -> ExpBool True
+        | "false" -> ExpBool False
         | n = FLOAT -> ExpFloat (float_of_string n)
       ]
     | "simple" [

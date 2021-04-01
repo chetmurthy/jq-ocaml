@@ -14,6 +14,7 @@ let rec interp0 env e (j : t) : (t, t ll_t) choice =
   match e with
     ExpDot -> Right (of_list [j])
   | ExpInt n -> Right (of_list [`Int n])
+  | ExpBool b -> Right (of_list [`Bool b])
   | ExpString s -> Right (of_list [`String s])
 
   | ExpDotField f ->
@@ -259,6 +260,19 @@ let rec interp0 env e (j : t) : (t, t ll_t) choice =
       j |> interp0 (newenv@env) body in
     j |> interp0 ((fname, fcode)::env) e
 
+  | ExpEq (e1, e2) ->
+    j
+    |> interp0 env e1
+    |> of_choice
+    |> map (fun j1 ->
+        j
+        |> interp0 env e2
+        |> of_choice
+        |> map (fun j2 -> Left (`Bool (j1 = j2)))
+        |> inRight)
+    |> inRight
+         
+
   | e -> failwith Fmt.(str "interp0: unrecognized exp %a" pp_exp e)
 
 and binop env f e1 e2 j =
@@ -375,3 +389,15 @@ add_function "in"
       )
   )
 ;;
+
+add_function "select"
+  (function
+      [f0] ->
+      (function j ->
+         j
+         |> f0 
+         |> of_choice
+         |> map (function `Bool false -> Right(of_list []) | _ -> Left j)
+         |> inRight))
+;;
+
