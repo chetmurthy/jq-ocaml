@@ -32,10 +32,10 @@ open Yojson.Basic ;;
 
 #load "lazy_reclist.cmo";;
 open Lazy_reclist ;;
-#load "jqutil.cmo";;
-open Jqutil ;;
 #load "jqtypes.cmo";;
 open Jqtypes ;;
+#load "jqutil.cmo";;
+open Jqutil ;;
 #load "jqparse0.cmo";;
 open Jqparse0 ;;
 #load "jqinterp.cmo";;

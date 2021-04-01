@@ -102,6 +102,10 @@ let execute = "execute" >:::
       ; assert_equal [{|{"a":"d"}|}] (exec "{a: .b}" [{| {"b":"d"} |}])
       ; assert_equal [{|{"a":"d","b":"c"}|}] (exec "{a: .b, b: .a}" [{| {"a":"c", "b":"d"} |}])
       ; assert_equal [{|{"a":"d","b":"c"}|}] (exec "{a: .b.a, b: .a.b}" [{| {"a":{"b": "c"}, "b":{"a": "d"}} |}])
+      ; assert_equal ["1"] (exec ".[0]" [{| [1,2,3] |}])
+      ; assert_equal ["3"] (exec ".[-1]" [{| [1,2,3] |}])
+      ; assert_equal ["null"] (exec ".[-10]" [{| [1,2,3] |}])
+      ; assert_equal ["null"] (exec ".[10]" [{| [1,2,3] |}])
       ; assert_equal ["1";"2";"3"] (exec ".a[]" [{| {"a":[1,2,3]} |}])
       ; assert_equal ["1";"2"] (exec ".[]" [{| {"a":1,"b":2} |}])
       ; assert_equal [{|"c"|}] (exec ".a | .b" [{| {"a":{"b":"c"}} |}])
@@ -118,7 +122,7 @@ let execute = "execute" >:::
       )
   ; "simplest-2" >:: (fun ctxt ->
         ()
-      ; assert_equal ["2"] (exec {|.a // 2|} [{| {"b": 1} |}])
+      ; assert_equal ["null"] (exec ".[-10]" [{| [1,2,3] |}])
       )
   ; "errors" >:: (fun ctxt ->
         assert_raises_exn_pattern
@@ -131,6 +135,11 @@ let execute = "execute" >:::
           "array_list: not an array"
           (fun () -> exec {|.[]|} ["1"])
       )
+  ; "errors-2" >:: (fun ctxt ->
+        ()
+      ; assert_equal ["null"] (exec ".[-10]" [{| [1,2,3] |}])
+      )
+
   ; "." >:: (fun ctxt ->
         assert_equal
           ["null"] (exec "." ["null"])

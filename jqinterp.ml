@@ -110,7 +110,12 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
       else l |> of_list |> inRight
   end
 
-    
+  | ExpNeg e ->
+    j
+    |> interp0 e
+    |> of_choice
+    |> map (function `Int n -> Left(`Int (- n)))
+    |> inRight
 
   | e -> failwith Fmt.(str "interp0: unrecognized exp %a" pp_exp e)
 

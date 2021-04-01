@@ -1,5 +1,6 @@
 open Asttools
 
+module LazyList = struct
 type 'a ll_elem_t =
     IT of 'a
   | LL of 'a ll_t
@@ -58,3 +59,31 @@ let to_list ll =
   in orec ll
 
 let singleton v = cons_it v nil
+end
+
+module EagerList = struct
+  type 'a ll_t = 'a list
+
+  let nil = []
+  let cons_it v l = v::l
+  let cons_ll ll1 ll2 = ll1@ll2
+  let match_ll = function
+      [] -> None
+    | h::t -> Some(h,t)
+  let map f ll =
+    List.fold_right (fun v acc ->
+        match f v with
+          Left v -> v::acc
+        | Right ll -> ll@acc)
+      ll []
+  let of_choice = function
+      Left v -> [v]
+    | Right ll -> ll
+  let of_list l = l
+  let to_list l = l
+  let singleton v = [v]
+end
+(*
+include EagerList
+*)
+include LazyList

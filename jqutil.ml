@@ -13,10 +13,12 @@ let object_field fname : Yojson.Basic.t -> Yojson.Basic.t = function
   | _ -> raise (JQException "object_field: not an object")
 
 let array_deref n : Yojson.Basic.t -> Yojson.Basic.t = function
-    `List l -> begin match List.nth l n with
-        v -> v
-      | exception Failure _ -> raise (JQException Fmt.(str "array_deref: element %d not found (array too short)" n))
-    end
+    `List l ->
+    let alen = List.length l in
+    let n = if n < 0 then alen + n else n in
+    if n < 0 || n >= alen then `Null
+    else List.nth l n
+
   | _ -> raise (JQException "array_deref: not an array")
 
 let array_list : Yojson.Basic.t -> Yojson.Basic.t ll_t = function
