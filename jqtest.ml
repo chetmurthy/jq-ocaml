@@ -63,15 +63,32 @@ let parsing = "parsing" >:::
       ; assert_equal (ExpDeref (ExpDot, (ExpInt 0))) (of_string_exn ".[0]")
       ; assert_equal (ExpDotField "a") (of_string_exn ".a")
       ; assert_equal (ExpField ((ExpDotField "a"), "b")) (of_string_exn ".a.b")
+      ; assert_equal (ExpDict [])
+          (of_string_exn "{}")
+      ; assert_equal
+          (ExpDict [((ExpString "a"), (ExpDotField "a"));
+                    ((ExpString "b"), (ExpDotField "b"))])
+          (of_string_exn "{a: .a, b: .b}")
       )
   ]
 
-let execute = "execute" >::: [
+type string_list = string list [@@deriving show,eq]
+
+let printer = show_string_list
+
+let execute = "execute" >:::
+              let assert_equal = assert_equal ~printer in [
     "simplest" >:: (fun ctxt ->
         assert_equal [] (exec "." [])
       ; assert_equal ["0"] (exec "0" ["null"])
       ; assert_equal [{|"b"|}] (exec ".a" [{| {"a":"b"} |}])
-      ; assert_equal [{|"c"|}] (exec ".a.b" [{| {"a":{"b":"c"}} |}])
+      ; assert_equal [{|{}|}] (exec "{}" [{| {} |}])
+      ; assert_equal [{|{"a":"d"}|}] (exec "{a: .b}" [{| {"b":"d"} |}])
+      ; assert_equal [{|{"a":"d","b":"c"}|}] (exec "{a: .b, b: .a}" [{| {"a":"c", "b":"d"} |}])
+      ; assert_equal [{|{"a":"d","b":"c"}|}] (exec "{a: .b.a, b: .a.b}" [{| {"a":{"b": "c"}, "b":{"a": "d"}} |}])
+      )
+  ; "simplest-2" >:: (fun ctxt ->
+        ()
       )
   ; "." >:: (fun ctxt ->
         assert_equal

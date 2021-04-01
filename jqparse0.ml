@@ -29,8 +29,8 @@ EXTEND
     ;
 
     dict_pair:
-      [ [ id = LIDENT ; ":" ; e = exp -> (ExpString id, e)
-        | e1 = exp ; ":" ; e2 = exp -> (e1,e2)
+      [ [ id = LIDENT ; ":" ; e = exp LEVEL "//" -> (ExpString id, e)
+        | e1 = exp ; ":" ; e2 = exp LEVEL "//" -> (e1,e2)
       ] ]
     ;
 
