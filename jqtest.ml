@@ -270,6 +270,9 @@ let execute = "execute" >:::
       ; assert_raises_exn_pattern
           "interp0: exp (ExpDataBind ((ExpString \"foo\"), \"x\")) MUST be part of a sequence of filters"
           (fun () -> exec {|"foo" as $x|} [{| null |}])
+      ; assert_raises_exn_pattern
+        "foo"
+        (fun () -> exec {|error(.)|} [{|"foo"|}])
       )
   ; "errors-2" >:: (fun ctxt ->
         ()

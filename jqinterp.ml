@@ -549,3 +549,17 @@ add_function "select"
          |> inRight))
 ;;
 
+
+add_function "error"
+  (function
+      [f0] ->
+      (function j ->
+         j
+         |> f0
+         |> of_choice
+         |> map (function `String msg ->
+             raise (JQException msg))
+         |> inRight
+      )
+  )
+;;
