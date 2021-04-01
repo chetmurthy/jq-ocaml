@@ -28,14 +28,20 @@ let pp_lexbuf lb =
 
 print_string "================ START ================\n";; flush stdout ;;
 
+open Yojson.Basic ;;
+
 #load "lazy_reclist.cmo";;
-#load "jqutil.cmo";;
-#load "jqtypes.cmo";;
-#load "jqparse0.cmo";;
 open Lazy_reclist ;;
+#load "jqutil.cmo";;
 open Jqutil ;;
+#load "jqtypes.cmo";;
 open Jqtypes ;;
+#load "jqparse0.cmo";;
 open Jqparse0 ;;
+#load "jqinterp.cmo";;
+open Jqinterp ;;
+#load "jqtest.cmo";;
+open Jqtest ;;
 (*
 #use "jq_examples.ml";;
 *)

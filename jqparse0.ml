@@ -89,12 +89,13 @@ EXTEND
           ExpDot -> failwith "..fldname is a syntax error"
         | _ -> ExpField e f
         ]
-                   | e=exp ; "?" -> ExpQuestion e
-                   | e = exp ; OPT "." ; "[" ; e2 = exp ; "]" -> ExpDeref e e2
-                   | e = exp ; "[" ; "]" -> ExpBrackets e
-                   | e = exp ; "[" ; e1 = exp ; ":" ; e2 = OPT exp ; "]" -> ExpSlice e e1 e2
-                   | n = INT -> ExpInt n
-                   | n = FLOAT -> ExpFloat n
+        | e=exp ; "?" -> ExpQuestion e
+        | e = exp ; "[" ; e2 = exp ; "]" -> ExpDeref e e2
+        | e = exp ; "[" ; "]" -> ExpBrackets e
+        | e = exp ; "[" ; e1 = exp ; ":" ; e2 = OPT exp ; "]" -> ExpSlice e e1 e2
+        | e = exp ; "." ; "[" ; e2 = exp ; "]" -> ExpDeref e e2
+        | n = INT -> ExpInt (int_of_string n)
+        | n = FLOAT -> ExpFloat (float_of_string n)
       ]
     | "simple" [
         "." -> ExpDot

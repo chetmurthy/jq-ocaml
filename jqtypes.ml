@@ -8,8 +8,8 @@ type exp =
   | ExpField of exp * string
   | ExpQuestion of exp
   | ExpString of string
-  | ExpInt of string
-  | ExpFloat of string
+  | ExpInt of int
+  | ExpFloat of float
   | ExpDeref of exp * exp
   | ExpSlice of exp * exp * exp option
   | ExpBrackets of exp
@@ -43,4 +43,4 @@ type exp =
   | ExpDiv of exp * exp
   | ExpMod of exp * exp
   | ExpNeg of exp
-  | ExpDesAlt of exp * exp
+  | ExpDesAlt of exp * exp [@@deriving show { with_path = false },eq]

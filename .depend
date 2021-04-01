@@ -1,0 +1,36 @@
+jq_examples.cmo : \
+    lazy_reclist.cmo \
+    jqutil.cmo
+jq_examples.cmx : \
+    lazy_reclist.cmx \
+    jqutil.cmx
+jqinterp.cmo : \
+    lazy_reclist.cmo \
+    jqutil.cmo \
+    jqtypes.cmo
+jqinterp.cmx : \
+    lazy_reclist.cmx \
+    jqutil.cmx \
+    jqtypes.cmx
+jqtest.cmo : \
+    lazy_reclist.cmo \
+    jqtypes.cmo \
+    jqparse0.cmo \
+    jqinterp.cmo
+jqtest.cmx : \
+    lazy_reclist.cmx \
+    jqtypes.cmx \
+    jqparse0.cmx \
+    jqinterp.cmx
+jqtypes.cmo :
+jqtypes.cmx :
+jqutil.cmo : \
+    lazy_reclist.cmo
+jqutil.cmx : \
+    lazy_reclist.cmx
+lazy_reclist.cmo :
+lazy_reclist.cmx :
+jqparse0.cmo : \
+    jqtypes.cmo
+jqparse0.cmx : \
+    jqtypes.cmx

@@ -40,6 +40,10 @@ let map f ll =
       | Right ll' -> cons_ll ll' (maprec ll)
   in maprec ll
 
+let of_choice = function
+    Left v -> cons_it v nil
+  | Right ll -> ll
+
 let of_list l =
   let rec orec = function
       [] -> nil

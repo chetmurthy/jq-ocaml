@@ -34,15 +34,9 @@ let exec s js =
   js
   |> List.map Yojson.Basic.from_string
   |> of_list
-  |> interp e
+  |> map (interp e)
   |> to_list
   |> List.map Yojson.Basic.to_string
-
-let parsing = "parsing" >::: [
-    "simple" >:: (fun ctxt ->
-        assert_equal ExpDot (of_string_exn ".")
-      )
-  ]
 
 type json =
     [
@@ -57,13 +51,31 @@ type json =
 
 type json_list = json list [@@deriving show,eq]
 
-let execute = "execute" >::: [
-    "empty" >:: (fun ctxt ->
-        assert_equal [] (exec "." [])
+let printer = show_exp
+let cmp = equal_exp
+
+let parsing = "parsing" >:::
+              let assert_equal = assert_equal ~printer ~cmp in [
+    "simple" >:: (fun ctxt ->
+        assert_equal ExpDot (of_string_exn ".")
+      ; assert_equal (ExpInt 0) (of_string_exn "0")
+      ; assert_equal (ExpBrackets ExpDot) (of_string_exn ".[]")
+      ; assert_equal (ExpDeref (ExpDot, (ExpInt 0))) (of_string_exn ".[0]")
       )
-  ; "simple" >:: (fun ctxt ->
+  ]
+
+let execute = "execute" >::: [
+    "simplest" >:: (fun ctxt ->
+        assert_equal [] (exec "." []) ;
+        assert_equal ["0"] (exec "0" ["null"])
+      )
+  ; "." >:: (fun ctxt ->
         assert_equal
           ["null"] (exec "." ["null"])
+      )
+  ; ".[0]" >:: (fun ctxt ->
+        assert_equal
+          ["0"] (exec ".[0]" ["[0]"])
       )
   ]
 

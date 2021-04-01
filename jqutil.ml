@@ -1,5 +1,7 @@
-open Lazy_reclist
+open Asttools
 open Yojson.Basic
+
+open Lazy_reclist
 
 let object_field fname : Yojson.Basic.t -> Yojson.Basic.t = function
     `Assoc l -> begin match List.assoc fname l with
@@ -27,3 +29,6 @@ let gather_to_list
 
 let gather_to_array f ll : Yojson.Basic.t =
   ll |> gather_to_list f |> (fun l -> `List l)
+
+let map (f : t -> (t, t ll_t) choice) ll : t ll_t =
+  Lazy_reclist.map f ll
