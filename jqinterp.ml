@@ -170,30 +170,50 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
   | ExpAdd (e1,e2) ->
     binop (function ((j1 : t) , (j2 : t)) -> match (j1, j2) with
           (`Int n, `Int m) -> `Int(n+m)
+        | (`Float n, `Int m) -> `Float(n +. float_of_int m)
+        | (`Int n, `Float m) -> `Float(float_of_int n +. m)
+        | (`Float n, `Float m) -> `Float(n +. m)
       )
       e1 e2 j
 
   | ExpSub (e1,e2) ->
     binop (function ((j1 : t) , (j2 : t)) -> match (j1, j2) with
           (`Int n, `Int m) -> `Int(n-m)
+        | (`Float n, `Int m) -> `Float(n -. float_of_int m)
+        | (`Int n, `Float m) -> `Float(float_of_int n -. m)
+        | (`Float n, `Float m) -> `Float(n -. m)
       )
       e1 e2 j
 
   | ExpMul (e1,e2) ->
     binop (function ((j1 : t) , (j2 : t)) -> match (j1, j2) with
           (`Int n, `Int m) -> `Int(n*m)
+        | (`Float n, `Int m) -> `Float(n *. float_of_int m)
+        | (`Int n, `Float m) -> `Float(float_of_int n *. m)
+        | (`Float n, `Float m) -> `Float(n *. m)
       )
       e1 e2 j
 
   | ExpDiv (e1,e2) ->
+    let div_float n m =
+      let r = n /. m in
+      if Float.is_finite r then r
+      else raise (JQException "floating-point division produce non-numeric result") in
     binop (function ((j1 : t) , (j2 : t)) -> match (j1, j2) with
-          (`Int n, `Int m) -> `Int(n/m)
+          (`Int n, `Int m) -> `Float(div_float (float_of_int n) (float_of_int m))
+        | (`Float n, `Int m) -> `Float(div_float n (float_of_int m))
+        | (`Int n, `Float m) -> `Float(div_float (float_of_int n) m)
+        | (`Float n, `Float m) -> `Float(div_float n m)
       )
       e1 e2 j
 
   | ExpMod (e1,e2) ->
+    let mod_float n m = fst(modf(n /. m)) in
     binop (function ((j1 : t) , (j2 : t)) -> match (j1, j2) with
           (`Int n, `Int m) -> `Int(n mod m)
+        | (`Float n, `Int m) -> `Float(mod_float n (float_of_int m))
+        | (`Int n, `Float m) -> `Float(mod_float (float_of_int n) m)
+        | (`Float n, `Float m) -> `Float(mod_float n m)
       )
       e1 e2 j
 

@@ -136,12 +136,17 @@ let execute = "execute" >:::
           (List.sort Stdlib.compare [{|{"a":{"b":1},"c":"d","e":[2,3]}|}; {|"d"|}; {|{"b":1}|}; "1"; "[2,3]"; "2"; "3"])
           (List.sort Stdlib.compare (exec ".." [{| {"a":{"b":1}, "c":"d", "e":[2,3]} |}]))
       ; assert_equal ["3"] (exec {|.a + .b|} [{| {"a": 1, "b":2} |}])
+      ; assert_equal ["3.0"] (exec {|.a + .b|} [{| {"a": 1, "b":2.0} |}])
       ; assert_equal ["4"; "5"; "5"; "6"] (exec {|(.a,.b) + (.c,.d)|} [{| {"a": 1, "b":2, "c":3, "d":4} |}])
       ; assert_equal ["-1"] (exec {|.a - .b|} [{| {"a": 1, "b":2} |}])
+      ; assert_equal ["1.0"] (exec {|.a / .b|} [{| {"a": 1, "b":1} |}])
+      ; assert_equal ["0.5"] (exec {|.a / .b|} [{| {"a": 1, "b":2} |}])
+      ; assert_equal ["0"] (exec {|.a % .b|} [{| {"a": 1, "b":1} |}])
+      ; assert_equal ["0.0"] (exec {|.a % .b|} [{| {"a": 1, "b":1.0} |}])
       )
   ; "simplest-2" >:: (fun ctxt ->
         ()
-      ; assert_equal ["-1"] (exec {|.a - .b|} [{| {"a": 1, "b":2} |}])
+      ; assert_equal ["0.0"] (exec {|.a % .b|} [{| {"a": 1, "b":1.0} |}])
       )
   ; "errors" >:: (fun ctxt ->
         assert_raises_exn_pattern
@@ -153,10 +158,15 @@ let execute = "execute" >:::
       ; assert_raises_exn_pattern
           "array_list: not an array"
           (fun () -> exec {|.[]|} ["1"])
+      ; assert_raises_exn_pattern
+        "floating-point division produce non-numeric result"
+        (fun () -> exec {|.a / .b|} [{| {"a": 1, "b":0} |}])
       )
   ; "errors-2" >:: (fun ctxt ->
         ()
-      ; assert_equal ["null"] (exec ".[-10]" [{| [1,2,3] |}])
+      ; assert_raises_exn_pattern
+        "floating-point division produce non-numeric result"
+        (fun () -> exec {|.a / .b|} [{| {"a": 1, "b":0} |}])
       )
 
   ; "." >:: (fun ctxt ->
