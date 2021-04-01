@@ -238,6 +238,18 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
       )
       e1 e2 j
 
+  | ExpFuncall("length", [e]) ->
+    j
+    |> interp0 e
+    |> of_choice
+    |> map (function
+          `String s -> Left (`Int(String.length s))
+        | `List l -> Left (`Int(List.length l))
+        | `Assoc l -> Left (`Int(List.length l))
+        | `Null -> Left (`Int 0)
+      )
+    |> inRight
+
   | e -> failwith Fmt.(str "interp0: unrecognized exp %a" pp_exp e)
 
 and binop f e1 e2 j =

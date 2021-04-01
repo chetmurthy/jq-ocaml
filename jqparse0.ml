@@ -118,6 +118,8 @@ EXTEND
       | "[" ; e = exp ; "]" -> ExpCollect e
       | "[" ; "]" -> ExpArray
       | "{" ; l = LIST0 dict_pair SEP "," ; "}" -> ExpDict l
+      | f=LIDENT ; "(" ; l = LIST1 exp SEP ";" ; ")" -> ExpFuncall f l
+      | f=LIDENT -> ExpFuncall f []
     ]
  ]
   ;

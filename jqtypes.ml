@@ -45,4 +45,6 @@ type exp =
   | ExpDiv of exp * exp
   | ExpMod of exp * exp
   | ExpNeg of exp
-  | ExpDesAlt of exp * exp [@@deriving show { with_path = false },eq]
+  | ExpDesAlt of exp * exp
+  | ExpFuncall of string * exp list
+ [@@deriving show { with_path = false },eq]

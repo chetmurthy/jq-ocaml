@@ -94,6 +94,12 @@ let parsing = "parsing" >:::
           (of_string_exn {|..|})
       ; assert_equal (ExpAdd ((ExpDotField "a"), (ExpDotField "b")))
           (of_string_exn {|.a + .b|})
+      ; assert_equal (ExpFuncall ("now", []))
+          (of_string_exn {|now|})
+      ; assert_equal (ExpFuncall ("length", [(ExpString "foo")]))
+          (of_string_exn {|length("foo")|})
+      ; assert_equal (ExpFuncall ("length", [(ExpDot)]))
+          (of_string_exn {|length(.)|})
       )
   ]
 
@@ -103,7 +109,7 @@ let printer = show_string_list
 
 let execute = "execute" >:::
               let assert_equal = assert_equal ~printer in [
-    "simplest" >:: (fun ctxt ->
+    "ok" >:: (fun ctxt ->
         assert_equal [] (exec "." [])
       ; assert_equal ["0"] (exec "0" ["null"])
       ; assert_equal [{|"b"|}] (exec ".a" [{| {"a":"b"} |}])
@@ -155,10 +161,13 @@ let execute = "execute" >:::
           (exec {|{"k": {"a": 1, "b": 2}} * {"k": {"a": 0,"c": 3}}|} [{| null |}])
       ; assert_equal [{|["x","z"]|}] (exec {|.a / .b|} [{| {"a": "xyz", "b":"y"} |}])
       ; assert_equal [{|{"a":"y","b":"xyz"}|}] (exec {|{b: .a, a: .b}|} [{| {"a": "xyz", "b":"y"} |}])
+      ; assert_equal ["3"] (exec {|length(.)|} [{| "abc" |}])
+      ; assert_equal ["3"] (exec {|length(.)|} [{| [1,2,3] |}])
+      ; assert_equal ["3"] (exec {|length(.)|} [{| {"a":1, "b":2, "c":4} |}])
+      ; assert_equal ["0"] (exec {|length(.)|} [{| null |}])
       )
   ; "simplest-2" >:: (fun ctxt ->
         ()
-      ; assert_equal ["0.0"] (exec {|.a % .b|} [{| {"a": 1, "b":1.0} |}])
       )
   ; "errors" >:: (fun ctxt ->
         assert_raises_exn_pattern
