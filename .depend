@@ -30,8 +30,10 @@ jqutil.cmo : \
 jqutil.cmx : \
     lazy_reclist.cmx \
     jqtypes.cmx
-lazy_reclist.cmo :
-lazy_reclist.cmx :
+lazy_reclist.cmo : \
+    jqtypes.cmo
+lazy_reclist.cmx : \
+    jqtypes.cmx
 jqparse0.cmo : \
     jqtypes.cmo
 jqparse0.cmx : \

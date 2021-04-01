@@ -1,4 +1,7 @@
+open Yojson.Basic
+
 open Asttools
+open Jqtypes
 
 module LazyList = struct
 type 'a ll_elem_t =
@@ -65,10 +68,31 @@ let last ll =
     [] -> failwith "LazyList.last: list was empty -- must be nonempty"
   | h::_ -> h
 
-let reduce f jinit ll =
-  List.fold_left (fun jv j ->
-      last (f jv j))
-    jinit (to_list ll)
+
+  let reduce benv (f : t -> t -> t ll_t) (jinit : t) (ll : t ll_t) : t ll_t =
+    let rec rrec (jv, ll) =
+      match match_ll ll with
+        None -> singleton jv
+      | Some (j, ll) -> begin
+          match last (f jv j) with
+            newjv -> rrec (newjv, ll)
+          | exception JQBreak s when List.mem s benv -> nil
+        end
+    in rrec (jinit, ll)
+
+  let foreach benv (f : t -> t -> t ll_t) update (jinit : t) (ll : t ll_t) =
+    let rec frec (jv, ll) =
+      match match_ll ll with
+        None -> nil
+      | Some(j, ll) -> begin match last (f jv j) with
+            newjv -> begin match  update newjv j with
+               updv ->
+               cons_ll updv (frec (newjv, ll))
+              | exception JQBreak s when List.mem s benv -> nil
+            end
+          | exception JQBreak s when List.mem s benv -> nil
+        end
+    in frec (jinit, ll)
 end
 
 module EagerList = struct
@@ -98,24 +122,34 @@ module EagerList = struct
       [] -> failwith "EagerList.last: list was empty -- must be nonempty"
     | h::_ -> h
 
-  let reduce f jinit ll =
-    List.fold_left (fun jv j ->
-        last (f jv j))
-      jinit ll
+  let reduce benv (f : t -> t -> t ll_t) (jinit : t) (ll : t ll_t) : t ll_t =
+    let rec rrec (jv, ll) =
+      match match_ll ll with
+        None -> singleton jv
+      | Some (j, ll) -> begin
+          match last (f jv j) with
+            newjv -> rrec (newjv, ll)
+          | exception JQBreak s when List.mem s benv -> nil
+        end
+    in rrec (jinit, ll)
 
-  let foreach f update jinit ll =
+  let foreach benv (f : t -> t -> t ll_t) update (jinit : t) (ll : t ll_t) =
     let rec frec (jv, ll) =
       match match_ll ll with
         None -> nil
-      | Some(j, ll) ->
-        let newjv = last (f jv j) in
-        let updv = update newjv j in
-        cons_ll updv (frec (newjv, ll))
+      | Some(j, ll) -> begin match last (f jv j) with
+            newjv -> begin match  update newjv j with
+               updv ->
+               cons_ll updv (frec (newjv, ll))
+              | exception JQBreak s when List.mem s benv -> nil
+            end
+          | exception JQBreak s when List.mem s benv -> nil
+        end
     in frec (jinit, ll)
-    
-end
 
-include EagerList
+end
 (*
-include LazyList
+include EagerList
 *)
+include LazyList
+

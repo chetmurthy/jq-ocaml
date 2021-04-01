@@ -1,5 +1,6 @@
 
 exception JQException of string
+exception JQBreak of string
 
 type exp =
     ExpDot
@@ -52,5 +53,7 @@ type exp =
   | ExpDataBind of exp * string
   | ExpReduce of exp * string * exp * exp
   | ExpForeach of exp * string * exp * exp * exp
+  | ExpLabel of string
+  | ExpCond of (exp * exp) list * exp
 
  [@@deriving show { with_path = false },eq]

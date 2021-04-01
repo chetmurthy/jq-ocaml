@@ -130,6 +130,12 @@ let parsing = "parsing" >:::
                        (ExpAdd (ExpDot, (ExpDataVar "n"))),
                        (ExpCollect (ExpConcat ((ExpDataVar "n"), ExpDot)))))
           (of_string_exn {| foreach (1,2) as $n ( 0; . + $n; [$n, .]) |})
+      ; assert_equal
+          (ExpCond (
+              [((ExpGt (ExpDot, (ExpInt 10))), (ExpString "a"));
+               ((ExpGt (ExpDot, (ExpInt 5))), (ExpString "b"))],
+              (ExpString "c")))
+          (of_string_exn {| if . > 10 then "a" elif . > 5 then "b" else "c" end |})
       )
   ]
 
@@ -220,9 +226,22 @@ let execute = "execute" >:::
           (exec {|(.i,.i+1) as $x | $x|} [{| {"i": 1} |}; {| {"i": 2} |}; {| {"i": 3} |}])
       ; assert_equal ["3"] (exec {|reduce (1,2) as $n ( 0; . + $n)|} [{|null|}])
       ; assert_equal ["[1,1]"; "[2,3]"; "[3,6]"] (exec {| foreach (1,2,3) as $n ( 0; . + $n; [$n, .]) |} [{|0|}])
+      ; assert_equal [{|"c"|}; {|"c"|} ;
+                      {|"a"|}; {|"b"|} ;
+                      {|"b"|}; {|"a"|}]
+          (exec {| if (. == 6, . > 10) then "a" elif . > 5 then "b" else "c" end |} ["1"; "6"; "11"])
+      ; assert_equal [{|"c"|}; {|"b"|}; {|"a"|}]
+          (exec {| if . > 10 then "a" elif . > 5 then "b" else "c" end |} ["1"; "6"; "11"])
+      ; assert_equal ["15"] (exec {|label $here | reduce (1,2,3,4,5) as $n ( 0; if $n >= 10 then break $here else . + $n end)|} [{|0|}])
+      ; assert_equal [] (exec {|label $here | reduce (1,2,3,4,5,10) as $n ( 0; if $n >= 10 then break $here else . + $n end)|} [{|0|}])
+      ; assert_equal ["[1,1]"; "[2,3]"; "[3,6]"; "[4,10]"; "[5,15]"] (exec {|label $here | foreach (1,2,3,4,5) as $n ( 0; if $n >= 10 then break $here else . + $n end; [$n, .])|} [{|0|}])
+      ; assert_equal ["[1,1]"; "[2,3]"; "[3,6]"; "[4,10]"; "[5,15]"] (exec {|label $here | foreach (1,2,3,4,5,10) as $n ( 0; if $n >= 10 then break $here else . + $n end; [$n, .])|} [{|0|}])
+      ; assert_equal ["[1,1]"; "[2,3]"; "[3,6]"; "[4,10]"; "[5,15]"] (exec {|label $here | foreach (1,2,3,4,5) as $n ( 0; . + $n; if $n >= 10 then break $here else [$n, .] end)|} [{|0|}])
+      ; assert_equal ["[1,1]"; "[2,3]"; "[3,6]"; "[4,10]"; "[5,15]"] (exec {|label $here | foreach (1,2,3,4,5,10) as $n ( 0; . + $n; if $n >= 10 then break $here else [$n, .] end)|} [{|0|}])
       )
   ; "simplest-2" >:: (fun ctxt ->
         ()
+
       ; assert_equal [{|0|}] (exec {|0|} [{|0|}])
       )
   ; "errors" >:: (fun ctxt ->

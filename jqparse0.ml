@@ -6,6 +6,8 @@ open Jqtypes ;
 type t += [
     Exc of Ploc.t and t[@rebind_to Ploc.Exc;][@name "Ploc.Exc";]
   | JQException of string[@rebind_to Jqtypes.JQException;][@name "Jqtypes.JQException";]
+  | JQBreak of string[@rebind_to Jqtypes.JQBreak;][@name "Jqtypes.JQBreak";]
+
 ] [@@deriving show;]
 ;
 
@@ -120,6 +122,7 @@ EXTEND
       | ".." -> ExpRecurse
       | "$" ; id = LIDENT -> ExpDataVar id
       | "break" ; "$" ; l=LIDENT -> ExpBreak l
+      | "label" ; "$" ; l=LIDENT -> ExpLabel l
       | s = STRING -> ExpString s
       | "@" ; id = LIDENT -> ExpFormat id
       | "(" ; e = exp ; ")" -> e
@@ -136,6 +139,9 @@ EXTEND
         "(" ; e1 = exp ; ";" ; e2 = exp ; ")" -> ExpReduce e id e1 e2
       | "foreach" ; e = exp LEVEL "simple" ; "as" ; "$" ; id = LIDENT ;
         "(" ; e1 = exp ; ";" ; e2 = exp ; ";" ; e3 = exp ; ")" -> ExpForeach e id e1 e2 e3
+      | "if" ; e1 = exp ; "then" ; e2 = exp ;
+        l = LIST0 [ "elif" ; e3 = exp ; "then"; e4 = exp  -> (e3, e4) ] ;
+        "else" ; e = exp ; "end" -> ExpCond [(e1,e2)::l] e
     ]
  ]
   ;
