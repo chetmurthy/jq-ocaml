@@ -139,6 +139,9 @@ let parsing = "parsing" >:::
       ; assert_equal
           ExpEmpty
           (of_string_exn {| empty |})
+      ; assert_equal
+          (ExpTryCatch ((ExpDotField "a"), (ExpDotField "b")))
+          (of_string_exn {| try .a catch .b |})
           
       )
   ]
@@ -245,6 +248,8 @@ let execute = "execute" >:::
       ; assert_equal ["[1,1]"; "[2,3]"; "[3,6]"; "[4,10]"; "[5,15]"] (exec {|label $here | foreach (1,2,3,4,5) as $n ( 0; . + $n; if $n >= 10 then break $here else [$n, .] end)|} [{|0|}])
       ; assert_equal ["[1,1]"; "[2,3]"; "[3,6]"; "[4,10]"; "[5,15]"] (exec {|label $here | foreach (1,2,3,4,5,10) as $n ( 0; . + $n; if $n >= 10 then break $here else [$n, .] end)|} [{|0|}])
       ; assert_equal [] (exec {|empty|} [{|0|}; {|0|}])
+      ; assert_equal [{|"object_field: not an object"|}] (exec {|try .a catch .|} [{|[0]|}])
+      ; assert_equal [] (exec {|try .a|} [{|[0]|}])
       )
   ; "simplest-2" >:: (fun ctxt ->
         ()

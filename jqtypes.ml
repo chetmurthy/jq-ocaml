@@ -56,5 +56,6 @@ type exp =
   | ExpLabel of string
   | ExpCond of (exp * exp) list * exp
   | ExpEmpty
+  | ExpTryCatch of exp * exp
 
  [@@deriving show { with_path = false },eq]

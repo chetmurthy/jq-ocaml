@@ -421,6 +421,19 @@ let rec interp0 fenv denv benv e (j : t) : (t, t ll_t) choice =
       )
     |> inRight
 
+  | ExpTryCatch (e1, e2) -> begin
+      try
+        j
+        |> interp0 fenv denv benv e1
+        |> of_choice
+        |> to_list
+        |> of_list
+        |> inRight
+      with JQException msg ->
+        (`String msg)
+        |> interp0 fenv denv benv e2
+    end
+
   | e -> failwith Fmt.(str "interp0: unrecognized exp %a" pp_exp e)
 
 and binop fenv denv benv f e1 e2 j =

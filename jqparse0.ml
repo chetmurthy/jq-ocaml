@@ -140,9 +140,13 @@ EXTEND
         "(" ; e1 = exp ; ";" ; e2 = exp ; ")" -> ExpReduce e id e1 e2
       | "foreach" ; e = exp LEVEL "simple" ; "as" ; "$" ; id = LIDENT ;
         "(" ; e1 = exp ; ";" ; e2 = exp ; ";" ; e3 = exp ; ")" -> ExpForeach e id e1 e2 e3
+      | "foreach" ; e = exp LEVEL "simple" ; "as" ; "$" ; id = LIDENT ;
+        "(" ; e1 = exp ; ";" ; e2 = exp ; ")" -> ExpForeach e id e1 e2 ExpDot
       | "if" ; e1 = exp ; "then" ; e2 = exp ;
         l = LIST0 [ "elif" ; e3 = exp ; "then"; e4 = exp  -> (e3, e4) ] ;
         "else" ; e = exp ; "end" -> ExpCond [(e1,e2)::l] e
+      | "try" ; e1 = exp ; "catch" ; e2 = exp -> ExpTryCatch e1 e2
+      | "try" ; e1 = exp -> ExpTryCatch e1 ExpEmpty
     ]
  ]
   ;
