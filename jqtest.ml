@@ -107,10 +107,12 @@ let execute = "execute" >:::
       ; assert_equal [{|["c"]|}] (exec "[.a]" [{| {"a":"c"} |}])
       ; assert_equal ["1"; "2"] (exec "(.a,.b)" [{| {"a":1, "b":2} |}])
       ; assert_equal ["1"] (exec {|.["a"]|} [{| {"a":1, "b":2} |}])
+      ; assert_equal ["null"] (exec {|.a?|} [{| {"b":2} |}])
+      ; assert_equal ["1"; "null"] (exec {|(1,.a)?|} [{| {"b": 1} |}])
       )
   ; "simplest-2" >:: (fun ctxt ->
         ()
-      ; assert_equal ["1"] (exec {|.a?|} [{| {"a":1} |}])
+      ; assert_equal ["1"; "null"] (exec {|(1,.a)?|} [{| {"b": 1} |}])
       )
   ; "errors" >:: (fun ctxt ->
         assert_raises_exn_pattern
@@ -119,6 +121,9 @@ let execute = "execute" >:::
       ; assert_raises_exn_pattern
           "interp0: cannot deref array with non-int"
           (fun () -> exec {|.["a"]|} ["[]"])
+      ; assert_raises_exn_pattern
+          "object_field: field a not found"
+          (fun () -> exec {|.["a"]|} [{|{"b":1}|}])
       ; assert_raises_exn_pattern
           "array_list: not an array"
           (fun () -> exec {|.[]|} ["1"])
