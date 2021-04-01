@@ -106,6 +106,12 @@ let parsing = "parsing" >:::
                (ExpCollect (ExpSeq ((ExpBrackets ExpDot), (ExpFuncall ("f", [])))))),
               ExpDot))
           (of_string_exn {|def map(f): [.[] | f]; .|})
+      ; assert_equal
+          (ExpFuncDef (
+              ("map", ["f"],
+               (ExpCollect (ExpSeq ((ExpBrackets ExpDot), (ExpFuncall ("f", [])))))),
+              (ExpFuncall ("map", [(ExpAdd (ExpDot, (ExpInt 1)))]))))
+          (of_string_exn {|def map(f): [.[] | f]; map(. + 1)|})
       )
   ]
 
@@ -183,9 +189,11 @@ let execute = "execute" >:::
       ; assert_equal ["true"; "false"; "false"; "false"] (exec {|has(1,-1,-10,10)|} [{| [1,2] |}])
       ; assert_equal ["true"; "false"] (exec {|.[] | in({"foo": 42})|} [{| ["foo", "bar"] |}])
       ; assert_equal ["false"; "true"] (exec {|.[] | in([0,1])|} [{| [2, 0] |}])
+      ; assert_equal ["[1,2]"] (exec {|def map(f): [.[] | f]; map(. + 1)|} [{| [0, 1] |}])
       )
   ; "simplest-2" >:: (fun ctxt ->
         ()
+      ; assert_equal ["[1,2]"] (exec {|def map(f): [.[] | f]; map(. + 1)|} [{| [0, 1] |}])
       )
   ; "errors" >:: (fun ctxt ->
         assert_raises_exn_pattern

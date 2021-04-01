@@ -10,7 +10,7 @@ let inLeft v = Left v
 
 let functions = ref ([] : (string * ((t -> (t,t ll_t) choice) list -> t ->  (t, t ll_t) choice)) list)
 
-let rec interp0  e (j : t) : (t, t ll_t) choice =
+let rec interp0 env e (j : t) : (t, t ll_t) choice =
   match e with
     ExpDot -> Right (of_list [j])
   | ExpInt n -> Right (of_list [`Int n])
@@ -20,7 +20,7 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
     j |> object_field  f |> inLeft
 
   | ExpField (e,f) ->
-    j |> interp0  e |> of_choice |> map (fun j -> j |> object_field  f |> inLeft) |> inRight
+    j |> interp0 env e |> of_choice |> map (fun j -> j |> object_field  f |> inLeft) |> inRight
 
   | ExpDict l ->
     let rec edrec l j = match l with
@@ -29,9 +29,9 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
 
       | ((ke,ve)::l) ->
         j
-        |> interp0  ke
+        |> interp0 env ke
         |> of_choice
-        |> map (fun (`String k : t) -> j |> interp0  ve |> of_choice |> map (fun v ->
+        |> map (fun (`String k : t) -> j |> interp0 env ve |> of_choice |> map (fun v ->
             j
             |> edrec l
             |> of_choice
@@ -50,41 +50,41 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
 
   | ExpBrackets e ->
     j
-    |> interp0  e
+    |> interp0 env e
     |> of_choice
     |> map (fun j -> j |> array_list  |> inRight)
     |> inRight
 
   | ExpSeq(e1,e2) ->
     j
-    |> interp0  e1
+    |> interp0 env e1
     |> of_choice
-    |> map (interp0  e2)
+    |> map (interp0 env e2)
     |> inRight
 
   | ExpCollect e ->
     j
-    |> interp0  e
+    |> interp0 env e
     |> of_choice
     |> to_list
     |> (fun l -> Left(`List l))
 
   | ExpConcat(e1,e2) ->
     j
-    |> interp0  e1
+    |> interp0 env e1
     |> of_choice
     |> (fun ll1 -> j
-                   |> interp0  e2
+                   |> interp0 env e2
                    |> of_choice
                    |> (fun ll2 -> Right(cons_ll ll1 (cons_ll ll2 nil))))
 
   | ExpDeref(e1, e2) ->
     j
-    |> interp0  e1
+    |> interp0 env e1
     |> of_choice
     |> map (fun j1 ->
         j
-        |> interp0  e2
+        |> interp0 env e2
         |> of_choice
         |> map (fun j2 ->
             (match (j1, j2) with
@@ -102,7 +102,7 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
   | ExpQuestion e -> begin
     try
       let l = j
-              |> interp0 e
+              |> interp0 env e
               |> of_choice
               |> to_list in
       l |> of_list |> inRight
@@ -111,28 +111,28 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
 
   | ExpAlt (e1, e2) -> begin
       let l = j
-              |> interp0 e1
+              |> interp0 env e1
               |> of_choice
               |> to_list in
       if List.for_all (fun x -> x = `Null || x = `Bool false) l then
-        j |> interp0 e2
+        j |> interp0 env e2
       else l |> of_list |> inRight
   end
 
   | ExpNeg e ->
     j
-    |> interp0 e
+    |> interp0 env e
     |> of_choice
     |> map (function `Int n -> Left(`Int (- n)))
     |> inRight
 
   | ExpSlice(e, Some e1, None) ->
     j
-    |> interp0 e
+    |> interp0 env e
     |> of_choice
     |> map (function `List l ->
         j
-        |> interp0 e1
+        |> interp0 env e1
         |> of_choice
         |> map (function `Int n -> Left (`List (slice (Some n) None l)))
         |> inRight)
@@ -140,11 +140,11 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
 
   | ExpSlice(e, None, Some e2) ->
     j
-    |> interp0 e
+    |> interp0 env e
     |> of_choice
     |> map (function `List l ->
         j
-        |> interp0 e2
+        |> interp0 env e2
         |> of_choice
         |> map (function `Int m -> Left (`List (slice None (Some m) l)))
         |> inRight)
@@ -152,15 +152,15 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
 
   | ExpSlice(e, Some e1, Some e2) ->
     j
-    |> interp0 e
+    |> interp0 env e
     |> of_choice
     |> map (function `List l ->
         j
-        |> interp0 e1
+        |> interp0 env e1
         |> of_choice
         |> map (function `Int n ->
             j
-            |> interp0 e2
+            |> interp0 env e2
             |> of_choice
             |> map (function `Int m -> Left (`List (slice (Some n) (Some m) l)))
             |> inRight)
@@ -177,7 +177,7 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
     rrec j [] |> List.rev |> of_list |> inRight
 
   | ExpAdd (e1,e2) ->
-    binop (function ((j1 : t) , (j2 : t)) -> match (j1, j2) with
+    binop env (function ((j1 : t) , (j2 : t)) -> match (j1, j2) with
           (`Int n, `Int m) -> `Int(n+m)
         | (`Float n, `Int m) -> `Float(n +. float_of_int m)
         | (`Int n, `Float m) -> `Float(float_of_int n +. m)
@@ -195,7 +195,7 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
       e1 e2 j
 
   | ExpSub (e1,e2) ->
-    binop (function ((j1 : t) , (j2 : t)) -> match (j1, j2) with
+    binop env (function ((j1 : t) , (j2 : t)) -> match (j1, j2) with
           (`Int n, `Int m) -> `Int(n-m)
         | (`Float n, `Int m) -> `Float(n -. float_of_int m)
         | (`Int n, `Float m) -> `Float(float_of_int n -. m)
@@ -205,7 +205,7 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
       e1 e2 j
 
   | ExpMul (e1,e2) ->
-    binop (function ((j1 : t) , (j2 : t)) -> match (j1, j2) with
+    binop env (function ((j1 : t) , (j2 : t)) -> match (j1, j2) with
           (`Int n, `Int m) -> `Int(n*m)
         | (`Float n, `Int m) -> `Float(n *. float_of_int m)
         | (`Int n, `Float m) -> `Float(float_of_int n *. m)
@@ -221,7 +221,7 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
       let r = n /. m in
       if Float.is_finite r then r
       else raise (JQException "floating-point division produce non-numeric result") in
-    binop (function ((j1 : t) , (j2 : t)) -> match (j1, j2) with
+    binop env (function ((j1 : t) , (j2 : t)) -> match (j1, j2) with
           (`Int n, `Int m) -> `Float(div_float (float_of_int n) (float_of_int m))
         | (`Float n, `Int m) -> `Float(div_float n (float_of_int m))
         | (`Int n, `Float m) -> `Float(div_float (float_of_int n) m)
@@ -232,7 +232,7 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
 
   | ExpMod (e1,e2) ->
     let mod_float n m = fst(modf(n /. m)) in
-    binop (function ((j1 : t) , (j2 : t)) -> match (j1, j2) with
+    binop env (function ((j1 : t) , (j2 : t)) -> match (j1, j2) with
           (`Int n, `Int m) -> `Int(n mod m)
         | (`Float n, `Int m) -> `Float(mod_float n (float_of_int m))
         | (`Int n, `Float m) -> `Float(mod_float (float_of_int n) m)
@@ -241,25 +241,33 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
       e1 e2 j
 
   | ExpFuncall(f, l) ->
-    let argcl = List.map interp0 l in
+    let argcl = List.map (interp0 env) l in
     let code =
-      match List.assoc f !functions with
+      match List.assoc f env with
         f -> f
       | exception Not_found -> failwith Fmt.(str "interp: function %a not found" Dump.string f)
     in
     j
     |> code argcl
 
+  | ExpFuncDef((fname, formals, body), e) ->
+    let fcode actuals j =
+      if List.length formals <> List.length actuals then
+        failwith Fmt.(str "function %a: formal-actual length mismatch" Dump.string fname) ;
+      let newenv = List.map2 (fun f a ->
+          (f, fun [] -> a)) formals actuals in
+      j |> interp0 (newenv@env) body in
+    j |> interp0 ((fname, fcode)::env) e
 
   | e -> failwith Fmt.(str "interp0: unrecognized exp %a" pp_exp e)
 
-and binop f e1 e2 j =
+and binop env f e1 e2 j =
   j
-  |> interp0 e1
+  |> interp0 env e1
   |> of_choice
   |> map (fun j1 ->
       j
-      |> interp0 e2
+      |> interp0 env e2
       |> of_choice
       |> map (fun j2 ->
           let jr = f (j1, j2) in
@@ -268,12 +276,11 @@ and binop f e1 e2 j =
   |> inRight
 
 
-let interp e j = interp0 e j
+let interp e j = interp0 !functions e j
 
 let add_function fname code =
   functions := (fname, code):: !functions
 ;;
-
 
 let interp_tuple l j : (t, t ll_t) choice =
   let rec edrec l (j : t) = match l with
