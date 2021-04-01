@@ -66,6 +66,9 @@ let rec interp0 fenv denv e (j : t) : (t, t ll_t) choice =
       )
     |> inRight
 
+  | ExpDataBind (_, _) as e ->
+    failwith Fmt.(str "interp0: exp %a MUST be part of a sequence of filters" pp_exp e)
+
   | ExpDataVar s -> begin match List.assoc s denv with
         v -> Left v
       | exception Not_found -> raise (JQException Fmt.(str "variable $%s not found in data-environment" s))

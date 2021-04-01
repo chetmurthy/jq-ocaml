@@ -231,9 +231,13 @@ let execute = "execute" >:::
       ; assert_raises_exn_pattern
         "arguments to addition were wrong types"
         (fun () -> exec {|.a + .b|} [{| {"a": 1, "b":"0"} |}])
+      ; assert_raises_exn_pattern
+          "interp0: exp (ExpDataBind ((ExpString \"foo\"), \"x\")) MUST be part of a sequence of filters"
+          (fun () -> exec {|"foo" as $x|} [{| null |}])
       )
   ; "errors-2" >:: (fun ctxt ->
         ()
+
       ; assert_raises_exn_pattern
         "arguments to addition were wrong types"
         (fun () -> exec {|.a + .b|} [{| {"a": 1, "b":"0"} |}])
