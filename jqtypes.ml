@@ -1,4 +1,6 @@
 
+exception JQException of string
+
 type exp =
     ExpDot
   | ExpDotField of string

@@ -1,25 +1,27 @@
 open Asttools
 open Yojson.Basic
 
+open Jqtypes
+
 open Lazy_reclist
 
 let object_field fname : Yojson.Basic.t -> Yojson.Basic.t = function
     `Assoc l -> begin match List.assoc fname l with
       v -> v
-      | exception Not_found -> failwith Fmt.(str "object_field: field %s not found" fname)
+      | exception Not_found -> raise (JQException Fmt.(str "object_field: field %s not found" fname))
     end
-  | _ -> failwith "object_field: not an object"
+  | _ -> raise (JQException "object_field: not an object")
 
 let array_deref n : Yojson.Basic.t -> Yojson.Basic.t = function
     `List l -> begin match List.nth l n with
         v -> v
-      | exception Failure _ -> failwith Fmt.(str "array_deref: element %d not found (array too short)" n)
+      | exception Failure _ -> raise (JQException Fmt.(str "array_deref: element %d not found (array too short)" n))
     end
-  | _ -> failwith "array_deref: not an array"
+  | _ -> raise (JQException "array_deref: not an array")
 
 let array_list : Yojson.Basic.t -> Yojson.Basic.t ll_t = function
     `List l -> of_list l
-  | _ -> failwith Fmt.(str "array_list: not an array")
+  | _ -> raise (JQException Fmt.(str "array_list: not an array"))
 
 let gather_to_list
     (f : Yojson.Basic.t -> Yojson.Basic.t ll_t)

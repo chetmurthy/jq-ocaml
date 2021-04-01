@@ -80,7 +80,12 @@ let rec interp e (j : t) : (t, t ll_t) choice =
         |> map (fun j2 ->
             (match (j1, j2) with
                (`Assoc _, `String s) -> object_field s j1
-             | (`List _, `Int n) -> array_deref n j1)
+             | (`List _, `Int n) -> array_deref n j1
+             | (`Assoc _, _) ->
+               raise (JQException "interp: cannot deref object with non-string")
+             | (`List _, _) ->
+               raise (JQException "interp: cannot deref array with non-int")
+            )
             |> inLeft)
         |> inRight)
     |> inRight

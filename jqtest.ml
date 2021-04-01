@@ -24,6 +24,7 @@ let assert_raises_exn_pattern pattern f =
       | Stdlib.Stream.Error msg when matches ~pattern msg -> true
       | Ploc.Exc(_, Failure msg) when matches ~pattern msg -> true
       | Invalid_argument msg when matches ~pattern msg -> true
+      | JQException msg when matches ~pattern msg -> true
       | _ -> false
     )
     f
@@ -107,6 +108,14 @@ let execute = "execute" >:::
   ; "simplest-2" >:: (fun ctxt ->
         ()
       ; assert_equal ["1"] (exec {|.["a"]|} [{| {"a":1, "b":2} |}])
+      )
+  ; "errors" >:: (fun ctxt ->
+        assert_raises_exn_pattern
+          "interp: cannot deref object with non-string"
+          (fun () -> exec ".[0]" ["{}"])
+      ; assert_raises_exn_pattern
+          "interp: cannot deref array with non-int"
+          (fun () -> exec {|.["a"]|} ["[]"])
       )
   ; "." >:: (fun ctxt ->
         assert_equal

@@ -5,6 +5,7 @@ open Jqtypes ;
 
 type t += [
     Exc of Ploc.t and t[@rebind_to Ploc.Exc;][@name "Ploc.Exc";]
+  | JQException of string[@rebind_to Jqtypes.JQException;][@name "Jqtypes.JQException";]
 ] [@@deriving show;]
 ;
 
