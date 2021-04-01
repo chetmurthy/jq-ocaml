@@ -100,6 +100,12 @@ let parsing = "parsing" >:::
           (of_string_exn {|length("foo")|})
       ; assert_equal (ExpFuncall ("length", [(ExpDot)]))
           (of_string_exn {|length(.)|})
+      ; assert_equal
+          (ExpFuncDef (
+              ("map", ["f"],
+               (ExpCollect (ExpSeq ((ExpBrackets ExpDot), (ExpFuncall ("f", [])))))),
+              ExpDot))
+          (of_string_exn {|def map(f): [.[] | f]; .|})
       )
   ]
 

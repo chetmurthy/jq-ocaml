@@ -35,8 +35,16 @@ EXTEND
       ] ]
     ;
 
+    funcdef: [ [
+        "def" ; id=LIDENT ; ":" ; e = exp ; ";" -> (id,[],e)
+      | "def" ; id=LIDENT ; "(" ; l = LIST1 LIDENT SEP ";" ; ")" ; ":" ; e = exp ; ";" -> (id, l, e)
+      ] ]
+    ;
     exp: [
-      "|" LEFTA [
+      "def" NONA [
+        fd=funcdef ; e = exp -> ExpFuncDef fd e
+      ]
+    | "|" LEFTA [
         e1 = exp ; "|" ; e2 = exp -> ExpSeq e1 e2
       ]
     | "," LEFTA [

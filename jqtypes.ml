@@ -47,4 +47,5 @@ type exp =
   | ExpNeg of exp
   | ExpDesAlt of exp * exp
   | ExpFuncall of string * exp list
+  | ExpFuncDef of (string * string list * exp) * exp
  [@@deriving show { with_path = false },eq]
