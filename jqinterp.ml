@@ -173,6 +173,14 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
         | (`Float n, `Int m) -> `Float(n +. float_of_int m)
         | (`Int n, `Float m) -> `Float(float_of_int n +. m)
         | (`Float n, `Float m) -> `Float(n +. m)
+        | (`List l1, `List l2) -> `List(l1@l2)
+        | (`String l1, `String l2) -> `String(l1^l2)
+        | (`Assoc l1, `Assoc l2) ->
+          `Assoc(List.fold_left (fun acc (k,v) ->
+              if List.mem_assoc k acc then acc else (k,v)::acc)
+              l2 l1)
+        | (`Null, v) -> v
+        | (v, `Null) -> v
       )
       e1 e2 j
 
