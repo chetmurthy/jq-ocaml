@@ -101,13 +101,13 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
   end
 
   | ExpAlt (e1, e2) -> begin
-    try
       let l = j
               |> interp0 e1
               |> of_choice
               |> to_list in
-      l |> of_list |> inRight
-    with JQException _ -> j |> interp0 e2
+      if List.for_all (fun x -> x = `Null || x = `Bool false) l then
+        j |> interp0 e2
+      else l |> of_list |> inRight
   end
 
     

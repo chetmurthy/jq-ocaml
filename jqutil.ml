@@ -8,7 +8,7 @@ open Lazy_reclist
 let object_field fname : Yojson.Basic.t -> Yojson.Basic.t = function
     `Assoc l -> begin match List.assoc fname l with
       v -> v
-      | exception Not_found -> raise (JQException Fmt.(str "object_field: field %s not found" fname))
+      | exception Not_found -> `Null
     end
   | _ -> raise (JQException "object_field: not an object")
 

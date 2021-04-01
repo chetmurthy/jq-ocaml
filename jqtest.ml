@@ -97,6 +97,7 @@ let execute = "execute" >:::
         assert_equal [] (exec "." [])
       ; assert_equal ["0"] (exec "0" ["null"])
       ; assert_equal [{|"b"|}] (exec ".a" [{| {"a":"b"} |}])
+      ; assert_equal ["null"] (exec ".b" [{| {"a":"b"} |}])
       ; assert_equal [{|{}|}] (exec "{}" [{| {} |}])
       ; assert_equal [{|{"a":"d"}|}] (exec "{a: .b}" [{| {"b":"d"} |}])
       ; assert_equal [{|{"a":"d","b":"c"}|}] (exec "{a: .b, b: .a}" [{| {"a":"c", "b":"d"} |}])
@@ -109,9 +110,9 @@ let execute = "execute" >:::
       ; assert_equal [{|["c"]|}] (exec "[.a]" [{| {"a":"c"} |}])
       ; assert_equal ["1"; "2"] (exec "(.a,.b)" [{| {"a":1, "b":2} |}])
       ; assert_equal ["1"] (exec {|.["a"]|} [{| {"a":1, "b":2} |}])
-      ; assert_equal ["1"] (exec {|(1,.a?)|} [{| {"b": 1} |}])
-      ; assert_equal [] (exec {|.a?|} [{| {"b":2} |}])
-      ; assert_equal [] (exec {|(1,.a)?|} [{| {"b": 1} |}])
+      ; assert_equal ["1"; "null"] (exec {|(1,.a)|} [{| {"b": 1} |}])
+      ; assert_equal ["null"] (exec {|.a|} [{| {"b":2} |}])
+      ; assert_equal ["1"] (exec {|(1,.a?)|} [{| [] |}])
       ; assert_equal ["2"] (exec {|.a // 2|} [{| {"b": 1} |}])
       )
   ; "simplest-2" >:: (fun ctxt ->
@@ -125,9 +126,6 @@ let execute = "execute" >:::
       ; assert_raises_exn_pattern
           "interp0: cannot deref array with non-int"
           (fun () -> exec {|.["a"]|} ["[]"])
-      ; assert_raises_exn_pattern
-          "object_field: field a not found"
-          (fun () -> exec {|.["a"]|} [{|{"b":1}|}])
       ; assert_raises_exn_pattern
           "array_list: not an array"
           (fun () -> exec {|.[]|} ["1"])
