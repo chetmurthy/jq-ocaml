@@ -316,3 +316,10 @@ add_function "keys_unsorted"
       | `List l -> Left (`List(List.mapi (fun i _ -> `Int i) l))
   )
 ;;
+
+add_function "has"
+  (function [`String k] -> function
+        `Assoc l ->
+        Left(`Bool (List.mem_assoc k l))
+  )
+;;
