@@ -37,3 +37,33 @@ let gather_to_array f ll : Yojson.Basic.t =
 
 let map (f : t -> (t, t ll_t) choice) ll : t ll_t =
   Lazy_reclist.map f ll
+
+let firstn n l =
+  let rec aux acc = function
+      (0, l) -> List.rev acc
+    | (n, (h::t)) -> aux (h::acc) (pred n, t)
+    | _ -> failwith "firstn"
+  in aux [] (n,l)
+
+let rec nthtail l = function
+	0 -> l
+  | n -> nthtail (List.tl l) (n-1)
+
+let slice n m (l : t list) =
+  let alen = List.length l in
+  let n = match n with
+      None -> 0
+    | Some n ->
+      if n < 0 then
+        if -n > alen then 0 else alen - n
+      else
+        if n > alen then alen else n in
+  let m = match m with
+      None -> alen
+    | Some m ->
+      if m < 0 then
+        if -m > alen then alen else alen - m
+      else
+      if m > alen then alen else m in
+  let l = nthtail l n in
+  firstn (m-n) l

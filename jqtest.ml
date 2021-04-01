@@ -84,6 +84,12 @@ let parsing = "parsing" >:::
           (of_string_exn {|.a?|})
       ; assert_equal (ExpAlt ((ExpQuestion (ExpDotField "a")), (ExpInt 1)))
           (of_string_exn {|.a? // 1|})
+      ; assert_equal (ExpSlice (ExpDot, (Some (ExpInt 1)), (Some (ExpInt 3))))
+          (of_string_exn {|.[1:3]|})
+      ; assert_equal (ExpSlice (ExpDot, (Some (ExpInt 1)), None))
+          (of_string_exn {|.[1:]|})
+      ; assert_equal (ExpSlice (ExpDot, None, (Some (ExpInt 3))))
+          (of_string_exn {|.[:3]|})
       )
   ]
 
@@ -119,10 +125,13 @@ let execute = "execute" >:::
       ; assert_equal ["1"] (exec {|(1,.a?)|} [{| [] |}])
       ; assert_equal ["2"] (exec {|.a // 2|} [{| {"b": 1} |}])
       ; assert_equal ["2"] (exec {|.a // 2|} [{| {"a": false} |}])
+      ; assert_equal ["[2,3,4]"] (exec ".[1:]" [{| [1,2,3,4] |}])
+      ; assert_equal ["[1,2,3]"] (exec ".[:3]" [{| [1,2,3,4] |}])
+      ; assert_equal ["[2,3]"] (exec ".[1:3]" [{| [1,2,3,4] |}])
       )
   ; "simplest-2" >:: (fun ctxt ->
         ()
-      ; assert_equal ["null"] (exec ".[-10]" [{| [1,2,3] |}])
+      ; assert_equal ["[2,3]"] (exec ".[1:3]" [{| [1,2,3,4] |}])
       )
   ; "errors" >:: (fun ctxt ->
         assert_raises_exn_pattern

@@ -13,7 +13,7 @@ type exp =
   | ExpInt of int
   | ExpFloat of float
   | ExpDeref of exp * exp
-  | ExpSlice of exp * exp * exp option
+  | ExpSlice of exp * exp option * exp option
   | ExpBrackets of exp
   | ExpDict of (exp * exp) list
   | ExpArray

@@ -91,9 +91,18 @@ EXTEND
         | _ -> ExpField e f
         ]
         | e=exp ; "?" -> ExpQuestion e
-        | e = exp ; "[" ; e2 = exp ; "]" -> ExpDeref e e2
+        | e = exp ; "[" ; e1 = exp ; "]" -> ExpDeref e e1
+
+        | e = exp ; "[" ; e1 = exp ; ":" ; e2 = exp ; "]" -> ExpSlice e (Some e1) (Some e2)
+
+        | e = exp ; "[" ; e1 = exp ; ":]" -> ExpSlice e (Some e1) None
+        | e = exp ; "[" ; e1 = exp ; ":" ; "]" -> ExpSlice e (Some e1) None
+
+        | e = exp ; "[:" ; e2 = exp ; "]" -> ExpSlice e None (Some e2)
+        | e = exp ; "[" ; ":" ; e2 = exp ; "]" -> ExpSlice e None (Some e2)
+
+
         | e = exp ; "[" ; "]" -> ExpBrackets e
-        | e = exp ; "[" ; e1 = exp ; ":" ; e2 = OPT exp ; "]" -> ExpSlice e e1 e2
         | e = exp ; "." ; "[" ; e2 = exp ; "]" -> ExpDeref e e2
         | n = INT -> ExpInt (int_of_string n)
         | n = FLOAT -> ExpFloat (float_of_string n)

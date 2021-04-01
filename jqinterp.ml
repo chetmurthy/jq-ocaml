@@ -117,6 +117,47 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
     |> map (function `Int n -> Left(`Int (- n)))
     |> inRight
 
+  | ExpSlice(e, Some e1, None) ->
+    j
+    |> interp0 e
+    |> of_choice
+    |> map (function `List l ->
+        j
+        |> interp0 e1
+        |> of_choice
+        |> map (function `Int n -> Left (`List (slice (Some n) None l)))
+        |> inRight)
+    |> inRight
+
+  | ExpSlice(e, None, Some e2) ->
+    j
+    |> interp0 e
+    |> of_choice
+    |> map (function `List l ->
+        j
+        |> interp0 e2
+        |> of_choice
+        |> map (function `Int m -> Left (`List (slice None (Some m) l)))
+        |> inRight)
+    |> inRight
+
+  | ExpSlice(e, Some e1, Some e2) ->
+    j
+    |> interp0 e
+    |> of_choice
+    |> map (function `List l ->
+        j
+        |> interp0 e1
+        |> of_choice
+        |> map (function `Int n ->
+            j
+            |> interp0 e2
+            |> of_choice
+            |> map (function `Int m -> Left (`List (slice (Some n) (Some m) l)))
+            |> inRight)
+        |> inRight)
+    |> inRight
+
   | e -> failwith Fmt.(str "interp0: unrecognized exp %a" pp_exp e)
 
 let interp e j = interp0 e j

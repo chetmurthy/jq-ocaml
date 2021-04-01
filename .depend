@@ -25,9 +25,11 @@ jqtest.cmx : \
 jqtypes.cmo :
 jqtypes.cmx :
 jqutil.cmo : \
-    lazy_reclist.cmo
+    lazy_reclist.cmo \
+    jqtypes.cmo
 jqutil.cmx : \
-    lazy_reclist.cmx
+    lazy_reclist.cmx \
+    jqtypes.cmx
 lazy_reclist.cmo :
 lazy_reclist.cmx :
 jqparse0.cmo : \
