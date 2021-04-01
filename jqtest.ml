@@ -69,6 +69,10 @@ let parsing = "parsing" >:::
           (ExpDict [((ExpString "a"), (ExpDotField "a"));
                     ((ExpString "b"), (ExpDotField "b"))])
           (of_string_exn "{a: .a, b: .b}")
+      ; assert_equal (ExpBrackets (ExpDotField "a"))
+          (of_string_exn ".a[]")
+      ; assert_equal (ExpSeq ((ExpDotField "a"), (ExpDotField "b")))
+          (of_string_exn ".a | .b")
       )
   ]
 
@@ -86,9 +90,13 @@ let execute = "execute" >:::
       ; assert_equal [{|{"a":"d"}|}] (exec "{a: .b}" [{| {"b":"d"} |}])
       ; assert_equal [{|{"a":"d","b":"c"}|}] (exec "{a: .b, b: .a}" [{| {"a":"c", "b":"d"} |}])
       ; assert_equal [{|{"a":"d","b":"c"}|}] (exec "{a: .b.a, b: .a.b}" [{| {"a":{"b": "c"}, "b":{"a": "d"}} |}])
+      ; assert_equal ["1";"2";"3"] (exec ".a[]" [{| {"a":[1,2,3]} |}])
+      ; assert_equal [{|"c"|}] (exec ".a | .b" [{| {"a":{"b":"c"}} |}])
+      ; assert_equal ["1";"2"] (exec ".[] | .a" [{| [{"a":1},{"a":2}] |}])
       )
   ; "simplest-2" >:: (fun ctxt ->
         ()
+      ; assert_equal [{|"c"|}] (exec ".a | .b" [{| {"a":{"b":"c"}} |}])
       )
   ; "." >:: (fun ctxt ->
         assert_equal

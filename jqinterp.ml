@@ -51,5 +51,18 @@ let rec interp e (j : t) : (t, t ll_t) choice =
       )
     |> inRight
 
+  | ExpBrackets e ->
+    j
+    |> interp e
+    |> of_choice
+    |> map (function `List l -> Right (of_list l))
+    |> inRight
+
+  | ExpSeq(e1,e2) ->
+    j
+    |> interp e1
+    |> of_choice
+    |> map (interp e2)
+    |> inRight
 
   | e -> failwith Fmt.(str "interp: unrecognized exp %a" pp_exp e)
