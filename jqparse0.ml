@@ -101,7 +101,7 @@ EXTEND
           ExpDot -> failwith "..fldname is a syntax error"
         | _ -> ExpField e f
         ]
-        | e=exp ; "?" -> ExpQuestion e
+        | e=exp ; "?" -> ExpTryCatch e ExpEmpty
         | e = exp ; "[" ; e1 = exp ; "]" -> ExpDeref e e1
         | e = exp ; "[" ; e1 = exp ; ":" ; e2 = exp ; "]" -> ExpSlice e (Some e1) (Some e2)
 

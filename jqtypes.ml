@@ -9,7 +9,6 @@ type exp =
   | ExpDataVar of string
   | ExpBreak of string
   | ExpField of exp * string
-  | ExpQuestion of exp
   | ExpString of string
   | ExpInt of int
   | ExpBool of bool

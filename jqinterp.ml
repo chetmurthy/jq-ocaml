@@ -172,16 +172,6 @@ let rec interp0 fenv denv benv e (j : t) : (t, t ll_t) choice =
         |> inRight)
     |> inRight
 
-  | ExpQuestion e -> begin
-    try
-      let l = j
-              |> interp0 fenv denv benv e
-              |> of_choice
-              |> to_list in
-      l |> of_list |> inRight
-    with JQException _ -> nil |> inRight
-  end
-
   | ExpAlt (e1, e2) -> begin
       let l = j
               |> interp0 fenv denv benv e1
