@@ -50,4 +50,7 @@ type exp =
   | ExpFuncall of string * exp list
   | ExpFuncDef of (string * string list * exp) * exp
   | ExpDataBind of exp * string
+  | ExpReduce of exp * string * exp * exp
+  | ExpForeach of exp * string * exp * exp * exp
+
  [@@deriving show { with_path = false },eq]

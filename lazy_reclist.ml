@@ -59,6 +59,16 @@ let to_list ll =
   in orec ll
 
 let singleton v = cons_it v nil
+
+let last ll =
+  match List.rev (to_list ll) with
+    [] -> failwith "LazyList.last: list was empty -- must be nonempty"
+  | h::_ -> h
+
+let reduce f jinit ll =
+  List.fold_left (fun jv j ->
+      last (f jv j))
+    jinit (to_list ll)
 end
 
 module EagerList = struct
@@ -82,8 +92,19 @@ module EagerList = struct
   let of_list l = l
   let to_list l = l
   let singleton v = [v]
+
+  let last ll =
+    match List.rev ll with
+      [] -> failwith "EagerList.last: list was empty -- must be nonempty"
+    | h::_ -> h
+
+  let reduce f jinit ll =
+    List.fold_left (fun jv j ->
+        last (f jv j))
+      jinit ll
 end
 (*
 include EagerList
 *)
 include LazyList
+

@@ -132,6 +132,10 @@ EXTEND
       | "true" -> ExpBool True
       | "false" -> ExpBool False
       | n = FLOAT -> ExpFloat (float_of_string n)
+      | "reduce" ; e = exp LEVEL "simple" ; "as" ; "$" ; id = LIDENT ;
+        "(" ; e1 = exp ; ";" ; e2 = exp ; ")" -> ExpReduce e id e1 e2
+      | "foreach" ; e = exp LEVEL "simple" ; "as" ; "$" ; id = LIDENT ;
+        "(" ; e1 = exp ; ";" ; e2 = exp ; ";" ; e3 = exp ; ")" -> ExpForeach e id e1 e2 e3
     ]
  ]
   ;

@@ -74,6 +74,23 @@ let rec interp0 fenv denv e (j : t) : (t, t ll_t) choice =
       | exception Not_found -> raise (JQException Fmt.(str "variable $%s not found in data-environment" s))
     end
 
+  | ExpReduce(e, id, init, step) ->
+    j
+    |> interp0 fenv denv init
+    |> of_choice
+    |> map (fun jinit ->
+        j
+        |> interp0 fenv denv e
+        |> of_choice
+        |> reduce (fun jv j' ->
+            j'
+            |> interp0 fenv ((id, jv)::denv) step
+            |> of_choice)
+          jinit
+        |> inLeft
+      )
+    |> inRight
+
   | ExpSeq(e1,e2) ->
     j
     |> interp0 fenv denv e1

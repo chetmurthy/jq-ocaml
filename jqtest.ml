@@ -121,6 +121,10 @@ let parsing = "parsing" >:::
       ; assert_equal
           (ExpDataBind ((ExpString "foo"), "x"))
           (of_string_exn {| "foo" as $x |})
+      ; assert_equal
+          (ExpReduce ((ExpConcat ((ExpInt 1), (ExpInt 2))), "n", (ExpInt 0),
+                      (ExpAdd (ExpDot, (ExpDataVar "n")))))
+          (of_string_exn {| reduce (1,2) as $n ( 0; . + $n) |})
       )
   ]
 
@@ -209,10 +213,10 @@ let execute = "execute" >:::
       ; assert_equal [{|"foo"|}] (exec {|"foo" as $x | $x|} [{|0|}])
       ; assert_equal ["1"; "2"; "2"; "3"; "3"; "4"]
           (exec {|(.i,.i+1) as $x | $x|} [{| {"i": 1} |}; {| {"i": 2} |}; {| {"i": 3} |}])
+      ; assert_equal ["3"] (exec {|reduce (1,2) as $n ( 0; . + $n)|} [{|null|}])
       )
   ; "simplest-2" >:: (fun ctxt ->
         ()
-      ; assert_equal [{|0|}] (exec {|0|} [{|0|}])
       ; assert_equal [{|0|}] (exec {|0|} [{|0|}])
       )
   ; "errors" >:: (fun ctxt ->
