@@ -65,4 +65,11 @@ let rec interp e (j : t) : (t, t ll_t) choice =
     |> map (interp e2)
     |> inRight
 
+  | ExpCollect e ->
+    j
+    |> interp e
+    |> of_choice
+    |> to_list
+    |> (fun l -> Left(`List l))
+
   | e -> failwith Fmt.(str "interp: unrecognized exp %a" pp_exp e)

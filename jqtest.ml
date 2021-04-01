@@ -73,6 +73,8 @@ let parsing = "parsing" >:::
           (of_string_exn ".a[]")
       ; assert_equal (ExpSeq ((ExpDotField "a"), (ExpDotField "b")))
           (of_string_exn ".a | .b")
+      ; assert_equal (ExpCollect (ExpDotField "a"))
+          (of_string_exn "[.a]")
       )
   ]
 
@@ -93,10 +95,11 @@ let execute = "execute" >:::
       ; assert_equal ["1";"2";"3"] (exec ".a[]" [{| {"a":[1,2,3]} |}])
       ; assert_equal [{|"c"|}] (exec ".a | .b" [{| {"a":{"b":"c"}} |}])
       ; assert_equal ["1";"2"] (exec ".[] | .a" [{| [{"a":1},{"a":2}] |}])
+      ; assert_equal [{|"c"|}] (exec ".a | .b" [{| {"a":{"b":"c"}} |}])
       )
   ; "simplest-2" >:: (fun ctxt ->
         ()
-      ; assert_equal [{|"c"|}] (exec ".a | .b" [{| {"a":{"b":"c"}} |}])
+      ; assert_equal [{|["c"]|}] (exec "[.a]" [{| {"a":"c"} |}])
       )
   ; "." >:: (fun ctxt ->
         assert_equal
