@@ -158,6 +158,15 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
         |> inRight)
     |> inRight
 
+  | ExpRecurse ->
+    let rec rrec j (acc : t list) =
+      let acc = j::acc in
+      match j with
+        `List l -> List.fold_right rrec l acc
+      | `Assoc l -> List.fold_right rrec (List.map snd l) acc
+      | _ -> acc in
+    rrec j [] |> List.rev |> of_list |> inRight
+
   | e -> failwith Fmt.(str "interp0: unrecognized exp %a" pp_exp e)
 
 let interp e j = interp0 e j

@@ -109,6 +109,7 @@ EXTEND
       ]
     | "simple" [
         "." -> ExpDot
+      | ".." -> ExpRecurse
       | "." ; f=LIDENT -> ExpDotField f
       | "." ; f=STRING -> ExpDotField f
       | ".." -> ExpDotDot

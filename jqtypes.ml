@@ -3,6 +3,7 @@ exception JQException of string
 
 type exp =
     ExpDot
+  | ExpRecurse
   | ExpDotField of string
   | ExpDotDot
   | ExpDataVar of string

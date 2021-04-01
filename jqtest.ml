@@ -90,6 +90,8 @@ let parsing = "parsing" >:::
           (of_string_exn {|.[1:]|})
       ; assert_equal (ExpSlice (ExpDot, None, (Some (ExpInt 3))))
           (of_string_exn {|.[:3]|})
+      ; assert_equal ExpRecurse
+          (of_string_exn {|..|})
       )
   ]
 
@@ -128,10 +130,15 @@ let execute = "execute" >:::
       ; assert_equal ["[2,3,4]"] (exec ".[1:]" [{| [1,2,3,4] |}])
       ; assert_equal ["[1,2,3]"] (exec ".[:3]" [{| [1,2,3,4] |}])
       ; assert_equal ["[2,3]"] (exec ".[1:3]" [{| [1,2,3,4] |}])
+      ; assert_equal
+          (List.sort Stdlib.compare [{|{"a":{"b":1},"c":"d","e":[2,3]}|}; {|"d"|}; {|{"b":1}|}; "1"; "[2,3]"; "2"; "3"])
+          (List.sort Stdlib.compare (exec ".." [{| {"a":{"b":1}, "c":"d", "e":[2,3]} |}]))
       )
   ; "simplest-2" >:: (fun ctxt ->
         ()
-      ; assert_equal ["[2,3]"] (exec ".[1:3]" [{| [1,2,3,4] |}])
+      ; assert_equal
+          (List.sort Stdlib.compare [{|{"a":{"b":1},"c":"d","e":[2,3]}|}; {|"d"|}; {|{"b":1}|}; "1"; "[2,3]"; "2"; "3"])
+          (List.sort Stdlib.compare (exec ".." [{| {"a":{"b":1}, "c":"d", "e":[2,3]} |}]))
       )
   ; "errors" >:: (fun ctxt ->
         assert_raises_exn_pattern
