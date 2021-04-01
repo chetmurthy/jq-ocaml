@@ -114,6 +114,7 @@ let execute = "execute" >:::
       ; assert_equal ["null"] (exec {|.a|} [{| {"b":2} |}])
       ; assert_equal ["1"] (exec {|(1,.a?)|} [{| [] |}])
       ; assert_equal ["2"] (exec {|.a // 2|} [{| {"b": 1} |}])
+      ; assert_equal ["2"] (exec {|.a // 2|} [{| {"a": false} |}])
       )
   ; "simplest-2" >:: (fun ctxt ->
         ()
