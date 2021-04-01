@@ -331,3 +331,18 @@ add_function "has"
       )
   )
 ;;
+
+add_function "in"
+  (function
+      [`Assoc l] ->
+      (function
+          `String k ->
+          Left(`Bool (List.mem_assoc k l))
+      )
+    | [`List l] ->
+      (function
+          `Int n ->
+          Left (`Bool (n >= 0 && n < List.length l))
+      )
+  )
+;;

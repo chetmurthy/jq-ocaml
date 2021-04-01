@@ -175,6 +175,8 @@ let execute = "execute" >:::
       ; assert_equal ["true"; "false"] (exec {|has(.a,.c)|} [{| {"a":"b", "c":"e", "b":1} |}])
       ; assert_equal ["false"] (exec {|has(1)|} [{| [] |}])
       ; assert_equal ["true"; "false"; "false"; "false"] (exec {|has(1,-1,-10,10)|} [{| [1,2] |}])
+      ; assert_equal ["true"; "false"] (exec {|.[] | in({"foo": 42})|} [{| ["foo", "bar"] |}])
+      ; assert_equal ["false"; "true"] (exec {|.[] | in([0,1])|} [{| [2, 0] |}])
       )
   ; "simplest-2" >:: (fun ctxt ->
         ()
