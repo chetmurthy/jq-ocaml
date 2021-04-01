@@ -5,6 +5,13 @@ open Jqtypes
 
 open Lazy_reclist
 
+let canon_json j =
+  let rec crec = function
+      `List l -> `List (List.map crec l)
+    | `Assoc l -> `Assoc (List.sort (fun (a,_) (b,_) -> Stdlib.compare a b) (List.map (fun (k,v) -> (k, crec v)) l))
+    | v -> v
+  in crec j
+
 let object_field fname : Yojson.Basic.t -> Yojson.Basic.t = function
     `Assoc l -> begin match List.assoc fname l with
       v -> v
@@ -67,3 +74,6 @@ let slice n m (l : t list) =
       if m > alen then alen else m in
   let l = nthtail l n in
   firstn (m-n) l
+
+let array_sub l1 l2 =
+  List.filter (fun x -> not (List.mem x l2)) l1

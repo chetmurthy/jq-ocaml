@@ -147,6 +147,8 @@ let execute = "execute" >:::
       ; assert_equal ["0.5"] (exec {|.a / .b|} [{| {"a": 1, "b":2} |}])
       ; assert_equal ["0"] (exec {|.a % .b|} [{| {"a": 1, "b":1} |}])
       ; assert_equal ["0.0"] (exec {|.a % .b|} [{| {"a": 1, "b":1.0} |}])
+      ; assert_equal ["[3]"] (exec {|.a - .b|} [{| {"a": [1,2,3], "b":[1,2]} |}])
+      ; assert_equal ["[]"] (exec {|.a - .b|} [{| {"a": [1,2,3], "b":[1,2,3]} |}])
       )
   ; "simplest-2" >:: (fun ctxt ->
         ()
@@ -165,12 +167,15 @@ let execute = "execute" >:::
       ; assert_raises_exn_pattern
         "floating-point division produce non-numeric result"
         (fun () -> exec {|.a / .b|} [{| {"a": 1, "b":0} |}])
+      ; assert_raises_exn_pattern
+        "arguments to addition were wrong types"
+        (fun () -> exec {|.a + .b|} [{| {"a": 1, "b":"0"} |}])
       )
   ; "errors-2" >:: (fun ctxt ->
         ()
       ; assert_raises_exn_pattern
-        "floating-point division produce non-numeric result"
-        (fun () -> exec {|.a / .b|} [{| {"a": 1, "b":0} |}])
+        "arguments to addition were wrong types"
+        (fun () -> exec {|.a + .b|} [{| {"a": 1, "b":"0"} |}])
       )
 
   ; "." >:: (fun ctxt ->

@@ -181,6 +181,7 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
               l2 l1)
         | (`Null, v) -> v
         | (v, `Null) -> v
+        | _ -> raise (JQException "arguments to addition were wrong types")
       )
       e1 e2 j
 
@@ -190,6 +191,7 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
         | (`Float n, `Int m) -> `Float(n -. float_of_int m)
         | (`Int n, `Float m) -> `Float(float_of_int n -. m)
         | (`Float n, `Float m) -> `Float(n -. m)
+        | (`List l1, `List l2) -> `List (array_sub l1 l2)
       )
       e1 e2 j
 
