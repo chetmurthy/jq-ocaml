@@ -8,6 +8,8 @@ open Jqtypes
 let inRight ll = Right ll
 let inLeft v = Left v
 
+let functions = ref ([] : (string * (t list -> t ->  (t, t ll_t) choice)) list)
+
 let rec interp0  e (j : t) : (t, t ll_t) choice =
   match e with
     ExpDot -> Right (of_list [j])
@@ -238,17 +240,30 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
       )
       e1 e2 j
 
-  | ExpFuncall("length", [e]) ->
+  | ExpFuncall(f, l) ->
+    let rec edrec l j = match l with
+        [] ->
+        j |> (fun j -> inLeft (`List []))
+
+      | (ve::l) ->
+        j
+        |> interp0 ve |> of_choice |> map (fun v ->
+            j
+            |> edrec l
+            |> of_choice
+            |> map (fun (`List l : t) ->
+                Left(`List (v::l)))
+            |> inRight
+          )
+        |> inRight
+    in
+    let code = List.assoc f !functions in
     j
-    |> interp0 e
+    |> edrec l
     |> of_choice
-    |> map (function
-          `String s -> Left (`Int(String.length s))
-        | `List l -> Left (`Int(List.length l))
-        | `Assoc l -> Left (`Int(List.length l))
-        | `Null -> Left (`Int 0)
-      )
+    |> map (function `List l -> j |> code l)
     |> inRight
+
 
   | e -> failwith Fmt.(str "interp0: unrecognized exp %a" pp_exp e)
 
@@ -268,3 +283,16 @@ and binop f e1 e2 j =
 
 
 let interp e j = interp0 e j
+
+let add_function fname code =
+  functions := (fname, code):: !functions
+;;
+
+add_function "length"
+  (function [] -> function
+        `String s -> Left (`Int(String.length s))
+      | `List l -> Left (`Int(List.length l))
+      | `Assoc l -> Left (`Int(List.length l))
+      | `Null -> Left (`Int 0)
+  )
+;;
