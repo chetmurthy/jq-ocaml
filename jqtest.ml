@@ -199,10 +199,11 @@ let execute = "execute" >:::
       ; assert_equal ["true"; "false"; "false"] (exec {|.i==1|} [{| {"i": 1} |}; {| {"i": 2} |}; {| {"i": 3} |}])
       ; assert_equal [{|{"i":1}|}] (exec {|select(.i==1)|} [{| {"i": 1} |}; {| {"i": 2} |}; {| {"i": 3} |}])
       ; assert_equal ["true"; "true"] (exec {|true|} [{| {"i": 1} |}; {| {"i": 2} |}])
+      ; assert_equal [{|{"i":1}|}; {|{"i":1}|}; {|{"i":2}|}; {|{"i":3}|}] (exec {|select(true, .i==1)|} [{| {"i": 1} |}; {| {"i": 2} |}; {| {"i": 3} |}])
       )
   ; "simplest-2" >:: (fun ctxt ->
         ()
-      ; assert_equal [{|{"i":1}|}; {|{"i":1}|}; {|{"i":2}|}; {|{"i":3}|}] (exec {|select(true, .i==1)|} [{| {"i": 1} |}; {| {"i": 2} |}; {| {"i": 3} |}])
+      ; assert_equal [{|{"i":1}|}; {|{"i":2}|}] (exec {|select(. <= {"i":2})|} [{| {"i": 1} |}; {| {"i": 2} |}; {| {"i": 3} |}])
       )
   ; "errors" >:: (fun ctxt ->
         assert_raises_exn_pattern

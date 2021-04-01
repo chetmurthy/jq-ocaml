@@ -271,6 +271,66 @@ let rec interp0 env e (j : t) : (t, t ll_t) choice =
         |> map (fun j2 -> Left (`Bool (j1 = j2)))
         |> inRight)
     |> inRight
+
+  | ExpNe (e1, e2) ->
+    j
+    |> interp0 env e1
+    |> of_choice
+    |> map (fun j1 ->
+        j
+        |> interp0 env e2
+        |> of_choice
+        |> map (fun j2 -> Left (`Bool (j1 <> j2)))
+        |> inRight)
+    |> inRight
+         
+  | ExpLt (e1, e2) ->
+    j
+    |> interp0 env e1
+    |> of_choice
+    |> map (fun j1 ->
+        j
+        |> interp0 env e2
+        |> of_choice
+        |> map (fun j2 -> Left (`Bool (j1 < j2)))
+        |> inRight)
+    |> inRight
+         
+  | ExpGt (e1, e2) ->
+    j
+    |> interp0 env e1
+    |> of_choice
+    |> map (fun j1 ->
+        j
+        |> interp0 env e2
+        |> of_choice
+        |> map (fun j2 -> Left (`Bool (j1 > j2)))
+        |> inRight)
+    |> inRight
+         
+  | ExpLe (e1, e2) ->
+    j
+    |> interp0 env e1
+    |> of_choice
+    |> map (fun j1 ->
+        j
+        |> interp0 env e2
+        |> of_choice
+        |> map (fun j2 -> Left (`Bool (j1 <= j2)))
+        |> inRight)
+    |> inRight
+         
+  | ExpGe (e1, e2) ->
+    j
+    |> interp0 env e1
+    |> of_choice
+    |> map (fun j1 ->
+        j
+        |> interp0 env e2
+        |> of_choice
+        |> map (fun j2 -> Left (`Bool (j1 >= j2)))
+        |> inRight)
+    |> inRight
          
 
   | e -> failwith Fmt.(str "interp0: unrecognized exp %a" pp_exp e)
