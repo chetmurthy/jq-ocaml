@@ -5,7 +5,6 @@ type exp =
     ExpDot
   | ExpRecurse
   | ExpDotField of string
-  | ExpDotDot
   | ExpDataVar of string
   | ExpBreak of string
   | ExpField of exp * string

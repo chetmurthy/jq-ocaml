@@ -167,6 +167,51 @@ let rec interp0  e (j : t) : (t, t ll_t) choice =
       | _ -> acc in
     rrec j [] |> List.rev |> of_list |> inRight
 
+  | ExpAdd (e1,e2) ->
+    binop (function ((j1 : t) , (j2 : t)) -> match (j1, j2) with
+          (`Int n, `Int m) -> `Int(n+m)
+      )
+      e1 e2 j
+
+  | ExpSub (e1,e2) ->
+    binop (function ((j1 : t) , (j2 : t)) -> match (j1, j2) with
+          (`Int n, `Int m) -> `Int(n-m)
+      )
+      e1 e2 j
+
+  | ExpMul (e1,e2) ->
+    binop (function ((j1 : t) , (j2 : t)) -> match (j1, j2) with
+          (`Int n, `Int m) -> `Int(n*m)
+      )
+      e1 e2 j
+
+  | ExpDiv (e1,e2) ->
+    binop (function ((j1 : t) , (j2 : t)) -> match (j1, j2) with
+          (`Int n, `Int m) -> `Int(n/m)
+      )
+      e1 e2 j
+
+  | ExpMod (e1,e2) ->
+    binop (function ((j1 : t) , (j2 : t)) -> match (j1, j2) with
+          (`Int n, `Int m) -> `Int(n mod m)
+      )
+      e1 e2 j
+
   | e -> failwith Fmt.(str "interp0: unrecognized exp %a" pp_exp e)
+
+and binop f e1 e2 j =
+  j
+  |> interp0 e1
+  |> of_choice
+  |> map (fun j1 ->
+      j
+      |> interp0 e2
+      |> of_choice
+      |> map (fun j2 ->
+          let jr = f (j1, j2) in
+          jr |> inLeft)
+      |> inRight)
+  |> inRight
+
 
 let interp e j = interp0 e j

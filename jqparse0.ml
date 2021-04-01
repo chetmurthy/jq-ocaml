@@ -92,27 +92,24 @@ EXTEND
         ]
         | e=exp ; "?" -> ExpQuestion e
         | e = exp ; "[" ; e1 = exp ; "]" -> ExpDeref e e1
-
         | e = exp ; "[" ; e1 = exp ; ":" ; e2 = exp ; "]" -> ExpSlice e (Some e1) (Some e2)
 
         | e = exp ; "[" ; e1 = exp ; ":]" -> ExpSlice e (Some e1) None
         | e = exp ; "[" ; e1 = exp ; ":" ; "]" -> ExpSlice e (Some e1) None
 
-        | e = exp ; "[:" ; e2 = exp ; "]" -> ExpSlice e None (Some e2)
         | e = exp ; "[" ; ":" ; e2 = exp ; "]" -> ExpSlice e None (Some e2)
 
-
         | e = exp ; "[" ; "]" -> ExpBrackets e
+        | e = exp ; "[:" ; e2 = exp ; "]" -> ExpSlice e None (Some e2)
         | e = exp ; "." ; "[" ; e2 = exp ; "]" -> ExpDeref e e2
         | n = INT -> ExpInt (int_of_string n)
         | n = FLOAT -> ExpFloat (float_of_string n)
       ]
     | "simple" [
         "." -> ExpDot
-      | ".." -> ExpRecurse
       | "." ; f=LIDENT -> ExpDotField f
       | "." ; f=STRING -> ExpDotField f
-      | ".." -> ExpDotDot
+      | ".." -> ExpRecurse
       | "$" ; id = LIDENT -> ExpDataVar id
       | "break" ; "$" ; l=LIDENT -> ExpBreak l
       | s = STRING -> ExpString s
@@ -121,7 +118,8 @@ EXTEND
       | "[" ; e = exp ; "]" -> ExpCollect e
       | "[" ; "]" -> ExpArray
       | "{" ; l = LIST0 dict_pair SEP "," ; "}" -> ExpDict l
-    ] ]
+    ]
+ ]
   ;
   exp_eoi : [ [ e = exp ; EOI -> e ] ] ;
 END;

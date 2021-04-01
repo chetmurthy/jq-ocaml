@@ -92,6 +92,8 @@ let parsing = "parsing" >:::
           (of_string_exn {|.[:3]|})
       ; assert_equal ExpRecurse
           (of_string_exn {|..|})
+      ; assert_equal (ExpAdd ((ExpDotField "a"), (ExpDotField "b")))
+          (of_string_exn {|.a + .b|})
       )
   ]
 
@@ -133,12 +135,13 @@ let execute = "execute" >:::
       ; assert_equal
           (List.sort Stdlib.compare [{|{"a":{"b":1},"c":"d","e":[2,3]}|}; {|"d"|}; {|{"b":1}|}; "1"; "[2,3]"; "2"; "3"])
           (List.sort Stdlib.compare (exec ".." [{| {"a":{"b":1}, "c":"d", "e":[2,3]} |}]))
+      ; assert_equal ["3"] (exec {|.a + .b|} [{| {"a": 1, "b":2} |}])
+      ; assert_equal ["4"; "5"; "5"; "6"] (exec {|(.a,.b) + (.c,.d)|} [{| {"a": 1, "b":2, "c":3, "d":4} |}])
+      ; assert_equal ["-1"] (exec {|.a - .b|} [{| {"a": 1, "b":2} |}])
       )
   ; "simplest-2" >:: (fun ctxt ->
         ()
-      ; assert_equal
-          (List.sort Stdlib.compare [{|{"a":{"b":1},"c":"d","e":[2,3]}|}; {|"d"|}; {|{"b":1}|}; "1"; "[2,3]"; "2"; "3"])
-          (List.sort Stdlib.compare (exec ".." [{| {"a":{"b":1}, "c":"d", "e":[2,3]} |}]))
+      ; assert_equal ["-1"] (exec {|.a - .b|} [{| {"a": 1, "b":2} |}])
       )
   ; "errors" >:: (fun ctxt ->
         assert_raises_exn_pattern
