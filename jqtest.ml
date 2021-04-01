@@ -61,13 +61,17 @@ let parsing = "parsing" >:::
       ; assert_equal (ExpInt 0) (of_string_exn "0")
       ; assert_equal (ExpBrackets ExpDot) (of_string_exn ".[]")
       ; assert_equal (ExpDeref (ExpDot, (ExpInt 0))) (of_string_exn ".[0]")
+      ; assert_equal (ExpDotField "a") (of_string_exn ".a")
+      ; assert_equal (ExpField ((ExpDotField "a"), "b")) (of_string_exn ".a.b")
       )
   ]
 
 let execute = "execute" >::: [
     "simplest" >:: (fun ctxt ->
-        assert_equal [] (exec "." []) ;
-        assert_equal ["0"] (exec "0" ["null"])
+        assert_equal [] (exec "." [])
+      ; assert_equal ["0"] (exec "0" ["null"])
+      ; assert_equal [{|"b"|}] (exec ".a" [{| {"a":"b"} |}])
+      ; assert_equal [{|"c"|}] (exec ".a.b" [{| {"a":{"b":"c"}} |}])
       )
   ; "." >:: (fun ctxt ->
         assert_equal
