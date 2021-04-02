@@ -5,6 +5,14 @@ open Jqtypes
 
 open Lazy_reclist
 
+(* borrowed from ounit *)
+let failwithf fmt =
+  Fmt.kstrf failwith fmt
+
+let jqexception s = raise (JQException s)
+let jqexceptionf fmt = Fmt.kstrf jqexception fmt
+let jqbreak s = raise (JQBreak s)
+
 let sort_object_keys l1 =
   List.sort (fun (a,_) (b,_) -> Stdlib.compare a b) l1
 
@@ -21,7 +29,7 @@ let object_field fname : Yojson.Basic.t -> Yojson.Basic.t = function
       | exception Not_found -> `Null
     end
   | `Null -> `Null
-  | _ -> raise (JQException "object_field: not an object")
+  | _ -> jqexception "object_field: not an object"
 
 let array_deref n : Yojson.Basic.t -> Yojson.Basic.t = function
     `List l ->
@@ -32,12 +40,12 @@ let array_deref n : Yojson.Basic.t -> Yojson.Basic.t = function
 
   | `Null -> `Null
 
-  | _ -> raise (JQException "array_deref: not an array")
+  | _ -> jqexception "array_deref: not an array"
 
 let array_list : Yojson.Basic.t -> Yojson.Basic.t ll_t = function
     `List l -> of_list l
   | `Assoc l -> of_list (List.map snd l)
-  | _ -> raise (JQException Fmt.(str "array_list: not an array or object"))
+  | _ -> jqexception "array_list: not an array or object"
 
 let gather_to_list
     (f : Yojson.Basic.t -> Yojson.Basic.t ll_t)
@@ -112,5 +120,5 @@ let utf8_length s =
   let open Uutf in
   String.fold_utf_8 (fun n _ -> function
         `Uchar _ -> n+1
-      | `Malformed _ -> raise (JQException "length: malformed UTF8 string"))
+      | `Malformed _ -> jqexception "length: malformed UTF8 string")
     0 s

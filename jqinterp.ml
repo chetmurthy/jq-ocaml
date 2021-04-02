@@ -73,7 +73,7 @@ let rec interp0 fenv denv benv e (j : t) : (t, t ll_t) choice =
 
   | ExpDataVar s -> begin match List.assoc s denv with
         v -> Left v
-      | exception Not_found -> raise (JQException Fmt.(str "variable $%s not found in data-environment" s))
+      | exception Not_found -> Fmt.(jqexceptionf "variable $%s not found in data-environment" s)
     end
 
   | ExpSeq(ExpLabel id,e2) ->
@@ -83,7 +83,7 @@ let rec interp0 fenv denv benv e (j : t) : (t, t ll_t) choice =
     failwith Fmt.(str "interp0: exp %a MUST be part of a sequence of filters" pp_exp e)
 
   | ExpBreak s ->
-    if List.mem s benv then raise (JQBreak s)
+    if List.mem s benv then  jqbreak s
     else
       failwith Fmt.(str "interp0: label %s was not lexically outer from break" s)
 
@@ -164,9 +164,9 @@ let rec interp0 fenv denv benv e (j : t) : (t, t ll_t) choice =
              | (`List _, `Int n) -> array_deref  n j1
              | (`Null, `Int n) -> `Null
              | (`Assoc _, _) ->
-               raise (JQException "interp0: cannot deref object with non-string")
+               jqexception "interp0: cannot deref object with non-string"
              | (`List _, _) ->
-               raise (JQException "interp0: cannot deref array with non-int")
+               jqexception "interp0: cannot deref array with non-int"
             )
             |> inLeft)
         |> inRight)
@@ -253,7 +253,7 @@ let rec interp0 fenv denv benv e (j : t) : (t, t ll_t) choice =
               l2 l1)
         | (`Null, v) -> v
         | (v, `Null) -> v
-        | _ -> raise (JQException "arguments to addition were wrong types")
+        | _ -> jqexception "arguments to addition were wrong types"
       )
       e1 e2 j
 
@@ -283,7 +283,7 @@ let rec interp0 fenv denv benv e (j : t) : (t, t ll_t) choice =
     let div_float n m =
       let r = n /. m in
       if Float.is_finite r then r
-      else raise (JQException "floating-point division produce non-numeric result") in
+      else jqexception "floating-point division produce non-numeric result" in
     binop fenv denv benv (function ((j1 : t) , (j2 : t)) -> match (j1, j2) with
           (`Int n, `Int m) -> `Float(div_float (float_of_int n) (float_of_int m))
         | (`Float n, `Int m) -> `Float(div_float n (float_of_int m))
@@ -560,8 +560,7 @@ add_function "error"
          j
          |> f0
          |> of_choice
-         |> map (function `String msg ->
-             raise (JQException msg))
+         |> map (function `String msg -> jqexception msg)
          |> inRight
       )
   )
