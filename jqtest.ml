@@ -123,6 +123,11 @@ let success_canon (output, exp, input) =
     (List.sort Stdlib.compare output)
     (List.sort Stdlib.compare (exec exp input))
 
+let failure_pattern (pattern, code, input) =
+    assert_raises_exn_pattern
+    pattern
+    (fun () -> exec code input)
+
 let execute = "execute" >::: [
     "ok" >:: (fun ctxt -> List.iter success [
         ([], ".", [])
@@ -232,44 +237,37 @@ let execute = "execute" >::: [
 
       ; assert_equal [{|0|}] (exec {|0|} [{|0|}])
       )
-  ; "errors" >:: (fun ctxt ->
-        assert_raises_exn_pattern
-          "interp0: cannot deref object with non-string"
-          (fun () -> exec ".[0]" ["{}"])
-      ; assert_raises_exn_pattern
-          "interp0: cannot deref array with non-int"
-          (fun () -> exec {|.["a"]|} ["[]"])
-      ; assert_raises_exn_pattern
-          "array_list: not an array"
-          (fun () -> exec {|.[]|} ["1"])
-      ; assert_raises_exn_pattern
-        "floating-point division produce non-numeric result"
-        (fun () -> exec {|.a / .b|} [{| {"a": 1, "b":0} |}])
-      ; assert_raises_exn_pattern
-        "arguments to addition were wrong types"
-        (fun () -> exec {|.a + .b|} [{| {"a": 1, "b":"0"} |}])
-      ; assert_raises_exn_pattern
-          "interp0: exp (ExpDataBind ((ExpString \"foo\"), \"x\")) MUST be part of a sequence of filters"
-          (fun () -> exec {|"foo" as $x|} [{| null |}])
-      ; assert_raises_exn_pattern
-        "foo"
-        (fun () -> exec {|error(.)|} [{|"foo"|}])
+  ; "errors" >:: (fun ctxt -> List.iter failure_pattern [
+      ("interp0: cannot deref object with non-string",
+       ".[0]", ["{}"])
+    ; ("interp0: cannot deref array with non-int",
+       {|.["a"]|}, ["[]"])
+    ; ("array_list: not an array",
+       {|.[]|}, ["1"])
+    ; ("floating-point division produce non-numeric result",
+       {|.a / .b|}, [{| {"a": 1, "b":0} |}])
+    ; ("arguments to addition were wrong types",
+       {|.a + .b|}, [{| {"a": 1, "b":"0"} |}])
+    ; ("interp0: exp (ExpDataBind ((ExpString \"foo\"), \"x\")) MUST be part of a sequence of filters",
+       {|"foo" as $x|}, [{| null |}])
+    ; ("foo",
+       {|error(.)|}, [{|"foo"|}])
+    ]
       )
   ; "errors-2" >:: (fun ctxt ->
         ()
-
-      ; assert_raises_exn_pattern
-        "arguments to addition were wrong types"
-        (fun () -> exec {|.a + .b|} [{| {"a": 1, "b":"0"} |}])
+      ; failure_pattern
+          ("arguments to addition were wrong types",
+           {|.a + .b|}, [{| {"a": 1, "b":"0"} |}])
       )
 
   ; "." >:: (fun ctxt ->
-        assert_equal
-          ["null"] (exec "." ["null"])
+        success
+          (["null"], ".", ["null"])
       )
   ; ".[0]" >:: (fun ctxt ->
-        assert_equal
-          ["0"] (exec ".[0]" ["[0]"])
+        success
+          (["0"], ".[0]", ["[0]"])
       )
   ]
 
