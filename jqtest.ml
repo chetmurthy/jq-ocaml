@@ -142,6 +142,9 @@ let parsing = "parsing" >:::
       ; assert_equal
           (ExpTryCatch ((ExpDotField "a"), (ExpDotField "b")))
           (of_string_exn {| try .a catch .b |})
+      ; assert_equal
+          (ExpFuncall ("path", [ExpDot]))
+          (of_string_exn {| path(.) |})
           
       )
   ]
@@ -250,6 +253,7 @@ let execute = "execute" >:::
       ; assert_equal [] (exec {|empty|} [{|0|}; {|0|}])
       ; assert_equal [{|"object_field: not an object"|}] (exec {|try .a catch .|} [{|[0]|}])
       ; assert_equal [] (exec {|try .a|} [{|[0]|}])
+      ; assert_equal [{|[]|}] (exec {|path(.)|} [{|[]|}])
       )
   ; "simplest-2" >:: (fun ctxt ->
         ()

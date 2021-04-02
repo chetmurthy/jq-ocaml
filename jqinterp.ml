@@ -8,9 +8,12 @@ open Jqtypes
 let inRight ll = Right ll
 let inLeft v = Left v
 
-let functions = ref ([] : (string * ((t -> (t,t ll_t) choice) list -> t ->  (t, t ll_t) choice)) list)
+type closure_t = path:bool -> t -> (t,t ll_t) choice
+type fenv_t = (string * (closure_t list -> closure_t)) list
 
-let rec interp0 path fenv denv benv e (j : t) : (t, t ll_t) choice =
+let functions = ref ([] : fenv_t)
+
+let rec interp0 path (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
   match e with
     ExpDot when path -> Left (`List [])
   | ExpDot -> Right (of_list [j])
@@ -307,18 +310,23 @@ let rec interp0 path fenv denv benv e (j : t) : (t, t ll_t) choice =
       )
       e1 e2 j
 
+  | ExpFuncall("path", _) when path -> Fmt.(jqexceptionf "path: invalid path expression %a" pp_exp e)
+  | ExpFuncall("path", [e1]) ->
+    j
+    |> interp0 true fenv denv benv e1
+
   | ExpFuncall(f, l) ->
-    let argcl = List.map (interp0 path fenv denv benv) l in
+    let argcl = List.map (fun e ~path -> interp0 path fenv denv benv e) l in
     let code =
       match List.assoc f fenv with
         f -> f
       | exception Not_found -> Fmt.(failwithf "interp: function %a not found" Dump.string f)
     in
     j
-    |> code argcl
+    |> (code ~path) argcl
 
   | ExpFuncDef((fname, formals, body), e) ->
-    let fcode actuals j =
+    let fcode actuals ~path j =
       if List.length formals <> List.length actuals then
         Fmt.(failwithf "function %a: formal-actual length mismatch" Dump.string fname) ;
       let newenv = List.map2 (fun f a ->
@@ -474,7 +482,7 @@ let interp_tuple l j : (t, t ll_t) choice =
 ;;
 
 add_function "length"
-  (function [] -> function
+  (function [] -> fun ~path -> function
         `String s -> Left (`Int(utf8_length s))
       | `List l -> Left (`Int(List.length l))
       | `Assoc l -> Left (`Int(List.length l))
@@ -483,20 +491,20 @@ add_function "length"
 ;;
 
 add_function "utf8bytelength"
-  (function [] -> function
+  (function [] -> fun ~path -> function
         `String s -> Left (`Int(String.length s))
   )
 ;;
 
 add_function "keys"
-  (function [] -> function
+  (function [] -> fun ~path -> function
         `Assoc l -> Left (`List(List.sort Stdlib.compare (List.map (fun (k,_) -> `String k) l)))
       | `List l -> Left (`List(List.mapi (fun i _ -> `Int i) l))
   )
 ;;
 
 add_function "keys_unsorted"
-  (function [] -> function
+  (function [] -> fun ~path -> function
         `Assoc l -> Left (`List(List.map (fun (k,_) -> `String k) l))
       | `List l -> Left (`List(List.mapi (fun i _ -> `Int i) l))
   )
@@ -505,17 +513,18 @@ add_function "keys_unsorted"
 add_function "has"
   (function
       [f0] ->
+      fun ~path ->
       (function
           (`Assoc l as j) ->
           j
-          |> f0
+          |> f0 ~path
           |> of_choice
           |> map (function `String k ->
               Left(`Bool (List.mem_assoc k l)))
           |> inRight
         | (`List l as j) ->
           j
-          |> f0
+          |> f0 ~path
           |> of_choice
           |> map (function `Int n ->
               Left (`Bool (n >= 0 && n < List.length l)))
@@ -527,17 +536,18 @@ add_function "has"
 add_function "in"
   (function
       [f0] ->
+      fun ~path ->
       (function
           (`String k as j) ->
           j
-          |> f0
+          |> f0 ~path
           |> of_choice
           |> map (function `Assoc l ->
               Left(`Bool (List.mem_assoc k l)))
           |> inRight
         | (`Int n as j) ->
           j
-          |> f0
+          |> f0 ~path
           |> of_choice
           |> map (function `List l ->
               Left (`Bool (n >= 0 && n < List.length l)))
@@ -549,9 +559,10 @@ add_function "in"
 add_function "select"
   (function
       [f0] ->
+      fun ~path ->
       (function j ->
          j
-         |> f0 
+         |> f0 ~path
          |> of_choice
          |> map (function `Bool false -> Right(of_list []) | _ -> Left j)
          |> inRight))
@@ -561,9 +572,10 @@ add_function "select"
 add_function "error"
   (function
       [f0] ->
+      fun ~path ->
       (function j ->
          j
-         |> f0
+         |> f0 ~path
          |> of_choice
          |> map (function `String msg -> jqexception msg)
          |> inRight
