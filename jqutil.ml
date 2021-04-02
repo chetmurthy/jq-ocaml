@@ -13,6 +13,21 @@ let jqexception s = raise (JQException s)
 let jqexceptionf fmt = Fmt.kstrf jqexception fmt
 let jqbreak s = raise (JQBreak s)
 
+
+(* shadow "failwith" in the Fmt module, so that the form
+
+  Fmt.(failwith ....)
+
+will be a type error (since it almost certainly should have been
+   "failwithf"
+
+*)
+module Fmt = struct
+  include Fmt
+  let failwith = ()
+end
+
+
 let sort_object_keys l1 =
   List.sort (fun (a,_) (b,_) -> Stdlib.compare a b) l1
 
