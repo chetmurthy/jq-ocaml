@@ -38,18 +38,13 @@ let canon_json j =
     | v -> v
   in crec j
 
-let object_field ~path fname : Yojson.Basic.t -> Yojson.Basic.t = function
-    `Assoc _ when path -> `List [ `String fname ]
-
-  | `Assoc l -> begin match List.assoc fname l with
+let object_field fname : Yojson.Basic.t -> Yojson.Basic.t = function
+    `Assoc l -> begin match List.assoc fname l with
       v -> v
       | exception Not_found -> `Null
     end
 
-  | `Null when path -> `List [ `String fname ]
-
   | `Null -> `Null
-  | _ when path -> Fmt.(jqexceptionf "path: invalid path access in object_field %a" Dump.string fname)
   | _ -> jqexception "object_field: not an object"
 
 let array_deref n : Yojson.Basic.t -> Yojson.Basic.t = function

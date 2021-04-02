@@ -4,6 +4,7 @@
 #require "rresult";;
 #require "pcre";;
 #require "bos";;
+#require "uutf";;
 #require "yaml";;
 #require "camlp5.pa_o";;
 #require "yojson" ;;
@@ -30,10 +31,10 @@ print_string "================ START ================\n";; flush stdout ;;
 
 open Yojson.Basic ;;
 
-#load "lazy_reclist.cmo";;
-open Lazy_reclist ;;
 #load "jqtypes.cmo";;
 open Jqtypes ;;
+#load "lazy_reclist.cmo";;
+open Lazy_reclist ;;
 #load "jqutil.cmo";;
 open Jqutil ;;
 #load "jqparse0.cmo";;
@@ -42,6 +43,7 @@ open Jqparse0 ;;
 open Jqinterp ;;
 #load "jqtest.cmo";;
 open Jqtest ;;
+
 (*
 #use "jq_examples.ml";;
 *)
