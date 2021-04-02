@@ -16,8 +16,8 @@ let matches ~pattern text =
     _ -> true
   | exception Not_found -> false
 
-let assert_raises_exn_pattern pattern f =
-  Testutil.assert_raises_exn_pred
+let assert_raises_exn_pattern ?msg pattern f =
+  Testutil.assert_raises_exn_pred ?msg
     (function
         Failure msg when matches ~pattern msg -> true
       | Ploc.Exc(_, Stdlib.Stream.Error msg) when matches ~pattern msg -> true
@@ -56,7 +56,8 @@ let printer = show_exp
 let cmp = equal_exp
 
 let success (expect, arg) =
-  assert_equal ~printer ~cmp expect (of_string_exn arg)
+  let msg = Fmt.(str "parsing test for code << %s >>" arg) in
+  assert_equal ~msg ~printer ~cmp expect (of_string_exn arg)
 
 let parsing = "parsing" >::: [
     "simple" >:: (fun ctxt -> List.iter success [
@@ -116,15 +117,18 @@ type string_list = string list [@@deriving show,eq]
 let printer = show_string_list
 
 let success (output, exp, input) =
-  assert_equal ~printer output (exec exp input)
+  let msg = Fmt.(str "exec test for code << %s >>" exp) in
+  assert_equal ~msg ~printer output (exec exp input)
 
 let success_canon (output, exp, input) =
-  assert_equal ~printer
+  let msg = Fmt.(str "canonicalizing exec test for code << %s >>" exp) in
+  assert_equal ~msg ~printer
     (List.sort Stdlib.compare output)
     (List.sort Stdlib.compare (exec exp input))
 
 let failure_pattern (pattern, code, input) =
-    assert_raises_exn_pattern
+  let msg = Fmt.(str "failure exec test for code << %s >>" code) in
+    assert_raises_exn_pattern ~msg
     pattern
     (fun () -> exec code input)
 
