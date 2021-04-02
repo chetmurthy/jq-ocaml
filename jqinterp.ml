@@ -21,16 +21,19 @@ let rec interp0 path (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
   | ExpInt _ when path -> Fmt.(jqexceptionf "path: invalid path expression %a" pp_exp e)
   | ExpInt n -> Right (of_list [`Int n])
 
+  | ExpBool _ when path -> Fmt.(jqexceptionf "path: invalid path expression %a" pp_exp e)
   | ExpBool b -> Right (of_list [`Bool b])
+
+  | ExpString _ when path -> Fmt.(jqexceptionf "path: invalid path expression %a" pp_exp e)
   | ExpString s -> Right (of_list [`String s])
 
   | ExpEmpty -> Right nil
 
   | ExpDotField f ->
-    j |> object_field  f |> inLeft
+    j |> object_field ~path f |> inLeft
 
   | ExpField (e,f) ->
-    j |> interp0 path fenv denv benv e |> of_choice |> map (fun j -> j |> object_field  f |> inLeft) |> inRight
+    j |> interp0 path fenv denv benv e |> of_choice |> map (fun j -> j |> object_field ~path f |> inLeft) |> inRight
 
   | ExpDict l ->
     let rec edrec l j = match l with
@@ -166,7 +169,7 @@ let rec interp0 path (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
         |> of_choice
         |> map (fun j2 ->
             (match (j1, j2) with
-               (`Assoc _, `String s) -> object_field  s j1
+               (`Assoc _, `String s) -> object_field ~path  s j1
              | (`Null, `String _) -> `Null
              | (`List _, `Int n) -> array_deref  n j1
              | (`Null, `Int n) -> `Null
@@ -236,6 +239,17 @@ let rec interp0 path (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
             |> inRight)
         |> inRight)
     |> inRight
+
+  | ExpRecurse when path ->
+    let rec rrec j revpfx (acc : t list) =
+      let acc = (`List (List.rev revpfx))::acc in
+      match j with
+        `List l -> 
+        let l = List.mapi (fun i x -> (i,x)) l in
+        List.fold_left (fun acc (idx,j) -> rrec j ((`Int idx)::revpfx) acc) acc l
+      | `Assoc l -> List.fold_left (fun acc (s,j) -> rrec j ((`String s)::revpfx) acc) acc l
+      | _ -> acc in
+    rrec j [] [] |> List.rev |> of_list |> inRight
 
   | ExpRecurse ->
     let rec rrec j (acc : t list) =

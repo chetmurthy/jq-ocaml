@@ -2,6 +2,8 @@ open Asttools ;;
 open Lazy_reclist ;;
 open Jqutil ;;
 
+let object_field = object_field ~path:false
+
 let eg = Yojson.Basic.from_file "eg.json" ;;
 
 (* . *)

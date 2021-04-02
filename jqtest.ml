@@ -228,18 +228,12 @@ let execute = "execute" >::: [
       ; ([], {|empty|}, [{|0|}; {|0|}])
       ; ([{|"object_field: not an object"|}], {|try .a catch .|}, [{|[0]|}])
       ; ([], {|try .a|}, [{|[0]|}])
-      ; ([{|[]|}], {|path(.)|}, [{|[]|}])
       ]
       )
   ; "ok-canon" >:: (fun ctxt -> List.iter success_canon [
         ([{|{"a":{"b":1},"c":"d","e":[2,3]}|}; {|"d"|}; {|{"b":1}|}; "1"; "[2,3]"; "2"; "3"],
          "..", [{| {"a":{"b":1}, "c":"d", "e":[2,3]} |}])
       ]
-      )
-  ; "simplest-2" >:: (fun ctxt ->
-        ()
-
-      ; assert_equal [{|0|}] (exec {|0|} [{|0|}])
       )
   ; "errors" >:: (fun ctxt -> List.iter failure_pattern [
       ("interp0: cannot deref object with non-string",
@@ -258,8 +252,34 @@ let execute = "execute" >::: [
        {|error(.)|}, [{|"foo"|}])
     ]
       )
+  ; "path" >:: (fun ctxt -> List.iter success [
+        ([], ".", [])
+      ; ([{|[]|}], {|path(.)|}, [{|[]|}])
+      ; ([{|["a"]|}], {|path(.a)|}, [{|null|}])
+      ; ([{|[]|}], {|path(.)|}, [{|[]|}])
+      ; ([{|["a"]|}], {|path(.a)|}, [{|{}|}])
+      ; ([{|["a"]|}], {|path(.a)|}, [{|{"b":1}|}])
+      ; ([{|["a"]|}], {|path(.a)|}, [{|{"b":1}|}])
+      ]
+      )
+  ; "errors-path" >:: (fun ctxt -> List.iter (fun (c,i) -> failure_pattern ("path: invalid path", c, i)) [
+      ({|path(path(.))|}, ["[]"])
+    ; ({|path(1)|}, [{| [] |}])
+    ; ({|path(.a)|}, [{|[]|}])
+    ; ({|path(.a)|}, [{|1|}])
+    ]
+      )
+  ; "ok-2" >:: (fun ctxt ->
+      ()
+    ; success ([{|[]|}; {|["a"]|}; {|["a",0]|}; {|["a",1]|}; {|["a",2]|}], {|path(..)|}, [{|{"a":[0,1,2]}|}])
+    ; success (["[]"; "[\"a\"]"; "[\"b\"]"], {|path(..)|}, [{|{"a":1,"b":2}|}])
+    ; assert_equal [{|0|}] (exec {|0|} [{|0|}])
+    )
   ; "errors-2" >:: (fun ctxt ->
         ()
+      ; failure_pattern
+          ("invalid path expression",
+           {|path(1)|}, [{| [] |}])
       ; failure_pattern
           ("arguments to addition were wrong types",
            {|.a + .b|}, [{| {"a": 1, "b":"0"} |}])
