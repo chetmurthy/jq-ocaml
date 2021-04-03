@@ -735,6 +735,15 @@ let get_nth l n =
   if n < 0 then jqexception "setpath: numeric index must be non-negative"
   else List.nth l n
 
+let remove_nth l n =
+  if n < 0 then jqexception "delpaths: numeric index must be non-negative"
+  else
+    let rec rrec = function
+        (h::t, 0) -> t
+      | (h::t, n) -> h::(rrec (t,n-1))
+      | ([], _) -> []
+    in rrec (l, n)
+
 let set_key l k newv =
   let l = if List.mem_assoc k l then
       List.remove_assoc k l
@@ -756,7 +765,7 @@ I.add_function "setpath"
           |> I.map_to_json (fun jp ->
               let pl = match jp with
                   `List l -> l
-                | _ -> jqexception "setpath: second arg must be list of string/int" in
+                | _ -> jqexception "setpath: first arg must be list of string/int" in
               j
               |> f1
               |> of_choice
@@ -782,6 +791,54 @@ I.add_function "setpath"
                   in Left (I.C.from_json (update (I.C.to_json j, pl)))
                 )
               |> inRight
+            )
+          |> inRight
+      )
+  )
+;;
+I.add_function "delpaths"
+  (function
+      [f0] ->
+      (function j ->
+          j
+          |> f0
+          |> of_choice
+          |> I.map_to_json (fun jp ->
+              let pl = match jp with
+                  `List l -> l
+                | _ -> jqexception "delpaths: first arg must be list of path (path = list of string/int)" in
+              let rec update1 = function
+                  (j, []) -> `Null
+
+                | (`List l, (`Int n)::[]) -> `List(remove_nth l n)
+                      
+                | (`List l, (`Int n)::tl) ->
+                  if n < 0 then jqexception "delpaths: numeric indexes must be non-negative"
+                  else if n >= List.length l then `List l
+                  else
+                    let newv = update1 (get_nth l n, tl) in
+                    `List(set_nth l n newv)
+
+                | (`Null, (`Int n::tl)) -> `Null
+                  
+                | (`Assoc [], (`String k::tl)) -> `Assoc []
+                                                    
+                | (`Assoc l, (`String k::tl)) -> 
+                  if List.mem_assoc k l then
+                    `Assoc (List.remove_assoc k l)
+                  else
+                    let newv = update1 (get_key l k, tl) in
+                    `Assoc (set_key l k newv)
+                      
+                | (`Null, (`String k::tl)) -> `Null
+                  
+                | _ -> jqexception "delpaths: first arg must be list/array/null, second must be array of array of string/int"
+              in
+              let rec update j = function
+                  `List l -> update1 (j,l)
+                | _ -> jqexception "delpaths: first arg must be list/array/null, second must be array of array of string/int"
+              in
+              Left (I.C.from_json (List.fold_left update (I.C.to_json j) pl))
             )
           |> inRight
       )
