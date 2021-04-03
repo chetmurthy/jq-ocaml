@@ -377,15 +377,9 @@ let rec interp0 env e (j : t) : (t, t ll_t) choice =
     j
     |> code argcl
 
-  | ExpFuncDef((fname, formals, body), e) ->
-    let (fenv, denv, benv) = env in
-    let fcode actuals j =
-      if List.length formals <> List.length actuals then
-        Fmt.(failwithf "function %a: formal-actual length mismatch" Dump.string fname) ;
-      let newenv = List.map2 (fun f a ->
-          ((f,0), fun [] -> a)) formals actuals in
-      j |> interp0 ((newenv@fenv), denv, benv) body in
-    j |> interp0 ((((fname, List.length formals), fcode)::fenv), denv, benv) e
+  | ExpFuncDef(fd, e) ->
+    let env = interp_funcdef env fd in
+    j |> interp0 env e
 
   | ExpEq (e1, e2) ->
     j
@@ -504,6 +498,18 @@ and binop env f e1 e2 j =
           jr |> inLeft)
       |> inRight)
   |> inRight
+
+and interp_funcdef (fenv, denv, benv) (fname, formals, body) =
+  let fcode actuals j =
+    if List.length formals <> List.length actuals then
+      Fmt.(failwithf "function %a: formal-actual length mismatch" Dump.string fname) ;
+    let newenv = List.map2 (fun f a ->
+        ((f,0), fun [] -> a)) formals actuals in
+    j |> interp0 ((newenv@fenv), denv, benv) body in
+  ((((fname, List.length formals), fcode)::fenv), denv, benv)
+
+and interp_funcdefs env l =
+  List.fold_left interp_funcdef env l
 
 let interp ?(functions=[]) e j =
   interp0 ((functions @ !predefined_functions), [], []) e j
