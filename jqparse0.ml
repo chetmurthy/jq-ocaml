@@ -25,10 +25,13 @@ value lexer = do {
 value g = Grammar.gcreate lexer;
 value (exp : Grammar.Entry.e exp) = Grammar.Entry.create g "exp";
 value (exp_eoi : Grammar.Entry.e exp) = Grammar.Entry.create g "exp_eoi";
+value (funcdefs : Grammar.Entry.e (list (string * list string * exp))) = Grammar.Entry.create g "funcdefs";
+value (funcdefs_eoi : Grammar.Entry.e (list (string * list string * exp))) = Grammar.Entry.create g "funcdefs_eoi";
 
 EXTEND
   GLOBAL:
     exp exp_eoi
+    funcdefs funcdefs_eoi
     ;
 
     dict_pair:
@@ -43,6 +46,7 @@ EXTEND
       | "def" ; id=LIDENT ; "(" ; l = LIST1 LIDENT SEP ";" ; ")" ; ":" ; e = exp ; ";" -> (id, l, e)
       ] ]
     ;
+    funcdefs: [ [ l = LIST1 funcdef -> l ] ] ;
     exp: [
       "def" NONA [
         fd=funcdef ; e = exp -> ExpFuncDef fd e
@@ -151,10 +155,14 @@ EXTEND
  ]
   ;
   exp_eoi : [ [ e = exp ; EOI -> e ] ] ;
+  funcdefs_eoi : [ [ e = funcdefs ; EOI -> e ] ] ;
 END;
 
 value parse_exp = Grammar.Entry.parse exp ;
 value parse_exp_eoi = Grammar.Entry.parse exp_eoi ;
+
+value parse_funcdefs = Grammar.Entry.parse funcdefs ;
+value parse_funcdefs_eoi = Grammar.Entry.parse funcdefs_eoi ;
 
 value parse_string pf s =
   pf (Stream.of_string s)

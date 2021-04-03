@@ -24,7 +24,7 @@ module type INTERP = sig
   type fenv_t = ((string * int) * (closure_t list -> closure_t)) list
   val map_to_json :
     (Yojson.Basic.t -> (t, t ll_t) choice) -> t ll_t -> t ll_t
-  val functions : fenv_t ref
+  val predefined_functions : fenv_t ref
   val interp0 :
     fenv_t ->
     (string * t) list -> string list -> exp -> closure_t
@@ -35,11 +35,11 @@ module type INTERP = sig
     (Yojson.Basic.t * Yojson.Basic.t -> Yojson.Basic.t) ->
     exp ->
     exp -> closure_t
-  val interp : exp -> closure_t
+  val interp : ?functions:fenv_t -> exp -> closure_t
   val add_function : string * int -> (closure_t list -> closure_t) -> unit
   val interp_tuple : (closure_t) list -> closure_t
-  val exec0 : exp -> Yojson.Basic.t list -> t ll_t
-  val exec : exp -> Yojson.Basic.t list -> t list
+  val exec0 : ?functions:fenv_t -> exp -> Yojson.Basic.t list -> t ll_t
+  val exec : ?functions:fenv_t -> exp -> Yojson.Basic.t list -> t list
 end
 
 
@@ -52,7 +52,7 @@ type fenv_t = ((string * int) * (closure_t list -> closure_t)) list
 let map_to_json f (ll : t ll_t) : t ll_t =
   map (fun j -> j |> C.to_json |> f) ll
 
-let functions = ref ([] : fenv_t)
+let predefined_functions = ref ([] : fenv_t)
 let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
   match e with
     ExpDot -> Right (of_list [j])
@@ -498,11 +498,11 @@ and binop fenv denv benv f e1 e2 j =
       |> inRight)
   |> inRight
 
-
-let interp e j = interp0 !functions [] [] e j
+let interp ?(functions=[]) e j =
+  interp0 (functions @ !predefined_functions) [] [] e j
 
 let add_function fname code =
-  functions := (fname, code):: !functions
+  predefined_functions := (fname, code):: !predefined_functions
 
 
 let interp_tuple l j : (t, t ll_t) choice =
@@ -525,15 +525,15 @@ let interp_tuple l j : (t, t ll_t) choice =
   j
   |> edrec l
 
-let exec0 e l =
+let exec0 ?(functions=[]) e l =
   l
   |> List.map C.from_json
   |> of_list
-  |> map (interp e)
+  |> map (interp ~functions e)
 
-let exec e l =
+let exec ?(functions=[]) e l =
   l
-  |> exec0 e
+  |> exec0 ~functions e
   |> to_list
 
 end
