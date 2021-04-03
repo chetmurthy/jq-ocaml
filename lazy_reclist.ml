@@ -67,7 +67,7 @@ let last ll =
   | h::_ -> h
 
 
-  let reduce benv (f : 'a -> 'a -> 'a ll_t) (jinit : 'a) (ll : 'a ll_t) : 'a ll_t =
+  let reduce (f : 'a -> 'a -> 'a ll_t) (jinit : 'a) (ll : 'a ll_t) : 'a ll_t =
     let rec rrec (jv, ll) =
       match match_ll ll with
         None -> singleton jv
@@ -77,7 +77,7 @@ let last ll =
         end
     in rrec (jinit, ll)
 
-  let foreach benv (f : 'a -> 'a -> 'a ll_t) update (jinit : 'a) (ll : 'a ll_t) =
+  let foreach (f : 'a -> 'a -> 'a ll_t) update (jinit : 'a) (ll : 'a ll_t) =
     let rec frec (jv, ll) =
       match match_ll ll with
         None -> nil
@@ -117,18 +117,17 @@ module EagerList = struct
       [] -> failwith "EagerList.last: list was empty -- must be nonempty"
     | h::_ -> h
 
-  let reduce benv (f : 'a -> 'a -> 'a ll_t) (jinit : 'a) (ll : 'a ll_t) : 'a ll_t =
+  let reduce (f : 'a -> 'a -> 'a ll_t) (jinit : 'a) (ll : 'a ll_t) : 'a ll_t =
     let rec rrec (jv, ll) =
       match match_ll ll with
         None -> singleton jv
       | Some (j, ll) -> begin
           match last (f jv j) with
             newjv -> rrec (newjv, ll)
-          | exception JQBreak s when List.mem s benv -> nil
         end
     in rrec (jinit, ll)
 
-  let foreach benv (f : 'a -> 'a -> 'a ll_t) update (jinit : 'a) (ll : 'a ll_t) =
+  let foreach (f : 'a -> 'a -> 'a ll_t) update (jinit : 'a) (ll : 'a ll_t) =
     let rec frec (jv, ll) =
       match match_ll ll with
         None -> nil
@@ -136,11 +135,9 @@ module EagerList = struct
             newjv -> begin match  update newjv j with
                updv ->
                cons_ll updv (frec (newjv, ll))
-              | exception JQBreak s when List.mem s benv -> nil
             end
-          | exception JQBreak s when List.mem s benv -> nil
         end
-    in frec (jinit, ll)
+    in (frec (jinit, ll))
 
 end
 (*

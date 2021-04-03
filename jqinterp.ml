@@ -157,7 +157,7 @@ let rec interp0 env e (j : t) : (t, t ll_t) choice =
                           j
                           |> interp0 env e
                           |> of_choice
-                          |> reduce benv (fun jv j' ->
+                          |> reduce (fun jv j' ->
                               jv
                               |> interp0 (fenv, ((id, j')::denv), benv) step
                               |> of_choice)
@@ -175,7 +175,7 @@ let rec interp0 env e (j : t) : (t, t ll_t) choice =
         j
         |> interp0 env e
         |> of_choice
-        |> foreach benv (fun jv j' ->
+        |> foreach (fun jv j' ->
             jv
             |> interp0 (fenv, ((id, j')::denv), benv) step
             |> of_choice)
