@@ -47,7 +47,7 @@ EXTEND
       "def" NONA [
         fd=funcdef ; e = exp -> ExpFuncDef fd e
       ]
-    | "|" LEFTA [
+    | "|" RIGHTA [
         e1 = exp ; "|" ; e2 = exp -> ExpSeq e1 e2
       ]
     | "," LEFTA [

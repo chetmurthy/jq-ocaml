@@ -204,10 +204,8 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
         |> of_choice
         |> map (fun j2 ->
             (match (C.to_json j1, C.to_json j2) with
-               (`Assoc _, `String s) -> C.object_field  s j1
-             | (`Null, `String _) -> C.from_json `Null
-             | (`List _, `Int n) -> C.array_deref n j1
-             | (`Null, `Int n) -> C.from_json `Null
+               ((`Assoc _|`Null), `String s) -> C.object_field  s j1
+             | ((`List _|`Null), `Int n) -> C.array_deref n j1
              | (`Assoc _, _) ->
                jqexception "interp0: cannot deref object with non-string"
              | (`List _, _) ->
