@@ -21,7 +21,7 @@ module type INTERP = sig
   module C : CARRIER
   type t = C.t
   type closure_t = t -> (t, t ll_t) choice
-  type fenv_t = (string * (closure_t list -> closure_t)) list
+  type fenv_t = ((string * int) * (closure_t list -> closure_t)) list
   val map_to_json :
     (Yojson.Basic.t -> (t, t ll_t) choice) -> t ll_t -> t ll_t
   val functions : fenv_t ref
@@ -36,7 +36,7 @@ module type INTERP = sig
     exp ->
     exp -> closure_t
   val interp : exp -> closure_t
-  val add_function : string -> (closure_t list -> closure_t) -> unit
+  val add_function : string * int -> (closure_t list -> closure_t) -> unit
   val interp_tuple : (closure_t) list -> closure_t
   val exec0 : exp -> Yojson.Basic.t list -> t ll_t
   val exec : exp -> Yojson.Basic.t list -> t list
@@ -47,7 +47,7 @@ module Gen(C : CARRIER) : (INTERP with module C = C) = struct
   module C = C
 type t = C.t
 type closure_t = t -> (t,t ll_t) choice
-type fenv_t = (string * (closure_t list -> closure_t)) list
+type fenv_t = ((string * int) * (closure_t list -> closure_t)) list
 
 let map_to_json f (ll : t ll_t) : t ll_t =
   map (fun j -> j |> C.to_json |> f) ll
@@ -364,7 +364,7 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
   | ExpFuncall(f, l) ->
     let argcl = List.map (fun e -> interp0 fenv denv benv e) l in
     let code =
-      match List.assoc f fenv with
+      match List.assoc (f, List.length l) fenv with
         f -> f
       | exception Not_found -> Fmt.(failwithf "interp: function %a not found" Dump.string f)
     in
@@ -376,9 +376,9 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
       if List.length formals <> List.length actuals then
         Fmt.(failwithf "function %a: formal-actual length mismatch" Dump.string fname) ;
       let newenv = List.map2 (fun f a ->
-          (f, fun [] -> a)) formals actuals in
+          ((f,0), fun [] -> a)) formals actuals in
       j |> interp0 (newenv@fenv) denv benv body in
-    j |> interp0 ((fname, fcode)::fenv) denv benv e
+    j |> interp0 (((fname, List.length formals), fcode)::fenv) denv benv e
 
   | ExpEq (e1, e2) ->
     j
@@ -595,7 +595,7 @@ module IJ = Gen(JsonCarrier)
 
 module I = IPJ
 
-I.add_function "length"
+I.add_function ("length",0)
   (function [] ->  function j -> match I.C.to_json j with
         `String s -> Left (I.C.from_json (`Int(utf8_length s)))
       | `List l -> Left (I.C.from_json (`Int(List.length l)))
@@ -604,27 +604,27 @@ I.add_function "length"
   )
 ;;
 
-I.add_function "utf8bytelength"
+I.add_function ("utf8bytelength",0)
   (function [] -> function j -> match I.C.to_json j with
         `String s -> Left (I.C.from_json (`Int(String.length s)))
   )
 ;;
 
-I.add_function "keys"
+I.add_function ("keys",0)
   (function [] -> function j -> match I.C.to_json j with
         `Assoc l -> Left (I.C.from_json (`List(List.sort Stdlib.compare (List.map (fun (k,_) -> `String k) l))))
       | `List l -> Left (I.C.from_json (`List(List.mapi (fun i _ -> `Int i) l)))
   )
 ;;
 
-I.add_function "keys_unsorted"
+I.add_function ("keys_unsorted",0)
   (function [] -> function j -> match I.C.to_json j with
         `Assoc l -> Left (I.C.from_json (`List(List.map (fun (k,_) -> `String k) l)))
       | `List l -> Left (I.C.from_json (`List(List.mapi (fun i _ -> `Int i) l)))
   )
 ;;
 
-I.add_function "has"
+I.add_function ("has",1)
   (function
       [f0] ->
       (function j -> match I.C.to_json j with
@@ -646,7 +646,7 @@ I.add_function "has"
   )
 ;;
 
-I.add_function "in"
+I.add_function ("in",1)
   (function
       [f0] ->
       (function j -> match I.C.to_json j with
@@ -668,7 +668,7 @@ I.add_function "in"
   )
 ;;
 
-I.add_function "select"
+I.add_function ("select",1)
   (function
       [f0] ->
       (function j ->
@@ -680,7 +680,7 @@ I.add_function "select"
 ;;
 
 
-I.add_function "error"
+I.add_function ("error",1)
   (function
       [f0] ->
       (function j ->
@@ -693,7 +693,7 @@ I.add_function "error"
   )
 ;;
 
-I.add_function "getpath"
+I.add_function ("getpath",1)
   (function
       [f0] ->
       (function j ->
@@ -755,7 +755,7 @@ let get_key l k =
     v -> v
   | exception Not_found -> `Null
 ;;
-I.add_function "setpath"
+I.add_function ("setpath",2)
   (function
       [f0;f1] ->
       (function j ->
@@ -796,7 +796,7 @@ I.add_function "setpath"
       )
   )
 ;;
-I.add_function "delpaths"
+I.add_function ("delpaths",1)
   (function
       [f0] ->
       (function j ->
@@ -845,7 +845,7 @@ I.add_function "delpaths"
   )
 ;;
 
-I.add_function "path"
+I.add_function ("path",1)
   (function
       [f0] ->
       (function j ->
