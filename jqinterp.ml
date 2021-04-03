@@ -675,3 +675,19 @@ I.add_function "error"
       )
   )
 ;;
+
+I.add_function "path"
+  (function
+      [f0] ->
+      (function j ->
+          j
+          |> f0
+          |> of_choice
+          |> map (function
+                (_, Some pl) -> Left (I.C.from_json (`List (List.rev pl)))
+              | _ -> Right nil
+            )
+          |> inRight
+      )
+  )
+;;
