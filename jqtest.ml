@@ -251,7 +251,6 @@ let execute = "execute" >::: [
        {|error(.)|}, [{|"foo"|}])
     ]
       )
-(*
   ; "path" >:: (fun ctxt -> List.iter success [
         ([], ".", [])
       ; ([{|[]|}], {|path(.)|}, [{|[]|}])
@@ -262,17 +261,15 @@ let execute = "execute" >::: [
       ; ([{|["a"]|}], {|path(.a)|}, [{|{"b":1}|}])
       ; ([{|[]|}; {|["a"]|}; {|["a",0]|}; {|["a",1]|}; {|["a",2]|}], {|path(..)|}, [{|{"a":[0,1,2]}|}])
       ; (["[]"; "[\"a\"]"; "[\"b\"]"], {|path(..)|}, [{|{"a":1,"b":2}|}])
-
       ]
       )
-  ; "errors-path" >:: (fun ctxt -> List.iter (fun (c,i) -> failure_pattern ("path: invalid path", c, i)) [
-      ({|path(path(.))|}, ["[]"])
-    ; ({|path(1)|}, [{| [] |}])
-    ; ({|path(.a)|}, [{|[]|}])
-    ; ({|path(.a)|}, [{|1|}])
+  ; "errors-path" >:: (fun ctxt -> List.iter failure_pattern [
+      ("path: invalid path", {|path(path(.))|}, ["[]"])
+    ; ("path: invalid path", {|path(1)|}, [{| [] |}])
+    ; ("not an object", {|path(.a)|}, [{|[]|}])
+    ; ("not an object", {|path(.a)|}, [{|1|}])
     ]
       )
-*)
   ; "ok-2" >:: (fun ctxt ->
       ()
     ; assert_equal [{|0|}] (exec {|0|} [{|0|}])

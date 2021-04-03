@@ -536,7 +536,9 @@ type json_path_t = Yojson.Basic.t * Yojson.Basic.t list option
 module PathCarrier : (CARRIER with type t = json_path_t) = struct
   type t = json_path_t
   let to_json x = fst x
-  let from_json x = (x, Some [])
+  let from_json = function
+      (`Assoc _ | `List _|`Null) as x -> (x, Some [])
+    | x -> (x, None)
 
   let add_int n = function
       None -> None
@@ -549,7 +551,7 @@ module PathCarrier : (CARRIER with type t = json_path_t) = struct
 let object_field fname : t -> t = function
     (`Assoc l, p) -> begin match List.assoc fname l with
       v -> (v, add_string fname p)
-      | exception Not_found -> (`Null, None)
+      | exception Not_found -> (`Null, add_string fname p)
     end
 
   | (`Null, p) -> (`Null, add_string fname p)
@@ -684,7 +686,8 @@ I.add_function "path"
           |> f0
           |> of_choice
           |> map (function
-                (_, Some pl) -> Left (I.C.from_json (`List (List.rev pl)))
+                (_, Some pl) -> Left (`List (List.rev pl), None)
+              | (_, None) -> jqexception "path: invalid path-expression"
               | _ -> Right nil
             )
           |> inRight
