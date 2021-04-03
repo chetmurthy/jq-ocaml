@@ -722,6 +722,72 @@ I.add_function "getpath"
   )
 ;;
 
+let set_nth l n newv =
+  let rec setrec = function
+      ([], n) when n > 0 -> `Null::(setrec ([], n-1))
+    | ([], 0) -> []
+    | (h::t, n) when n > 0 -> h::(setrec (t, n))
+    | (h::t, 0) -> newv::t
+  in if n < 0 then jqexception "setpath: numeric index must be non-negative"
+  else setrec (l,n)
+
+let get_nth l n =
+  if n < 0 then jqexception "setpath: numeric index must be non-negative"
+  else List.nth l n
+
+let set_key l k newv =
+  let l = if List.mem_assoc k l then
+      List.remove_assoc k l
+    else l in
+  sort_object_keys ((k,newv)::l)
+
+let get_key l k =
+  match List.assoc k l with
+    v -> v
+  | exception Not_found -> `Null
+;;
+I.add_function "setpath"
+  (function
+      [f0;f1] ->
+      (function j ->
+          j
+          |> f0
+          |> of_choice
+          |> I.map_to_json (fun jp ->
+              let pl = match jp with
+                  `List l -> l
+                | _ -> jqexception "setpath: second arg must be list of string/int" in
+              j
+              |> f1
+              |> of_choice
+              |> I.map_to_json (fun jv ->
+                  let rec update = function
+                      (j, []) -> jv
+                    | (`List l, (`Int n)::tl) ->
+                      let newv = update (get_nth l n, tl) in
+                      `List(set_nth l n newv)
+
+                    | (`Null, (`Int n::tl)) ->
+                       let newv = update (`Null, tl) in
+                       `List(set_nth [] n newv)
+
+                    | (`Assoc l, (`String k::tl)) ->
+                       let newv = update (get_key l k, tl) in
+                       `Assoc (set_key l k newv)
+
+                    | (`Null, (`String k::tl)) ->
+                       let newv = update (`Null, tl) in
+                       `Assoc (set_key [] k newv)
+                    | _ -> jqexception "setpath: first arg must be list/array/null, second must be array of string/int"
+                  in Left (I.C.from_json (update (I.C.to_json j, pl)))
+                )
+              |> inRight
+            )
+          |> inRight
+      )
+  )
+;;
+
 I.add_function "path"
   (function
       [f0] ->
