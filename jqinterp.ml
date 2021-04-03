@@ -8,44 +8,91 @@ open Jqtypes
 let inRight ll = Right ll
 let inLeft v = Left v
 
+module type CARRIER = sig
+  type t
+  val to_json : t -> Yojson.Basic.t
+  val from_json : Yojson.Basic.t -> t
+  val object_field : string -> t -> t
+  val array_list : t -> t ll_t
+  val array_deref : int -> t -> t
+end
+
+module type INTERP = sig
+  module J : CARRIER
+  type t = J.t
+  type closure_t = t -> (t, t ll_t) choice
+  type fenv_t = (string * (closure_t list -> closure_t)) list
+  val map_to_json :
+    (Yojson.Basic.t -> (t, t ll_t) choice) -> t ll_t -> t ll_t
+  val functions : fenv_t ref
+  val interp0 :
+    fenv_t ->
+    (string * t) list -> string list -> exp -> closure_t
+  val binop :
+    fenv_t ->
+    (string * t) list ->
+    string list ->
+    (Yojson.Basic.t * Yojson.Basic.t -> Yojson.Basic.t) ->
+    exp ->
+    exp -> closure_t
+  val interp : exp -> closure_t
+  val add_function : string -> (closure_t list -> closure_t) -> unit
+  val interp_tuple : (closure_t) list -> closure_t
+end
+
+
+module JsonCarrier : (CARRIER with type t = Yojson.Basic.t) = struct
+  type t = Yojson.Basic.t
+  let to_json x = x
+  let from_json x = x
+  let object_field = Jqutil.object_field
+  let array_list = Jqutil.array_list
+  let array_deref = Jqutil.array_deref
+end
+
+module Gen(J : CARRIER) : (INTERP with module J = J) = struct
+  module J = J
+type t = J.t
 type closure_t = t -> (t,t ll_t) choice
 type fenv_t = (string * (closure_t list -> closure_t)) list
 
-let functions = ref ([] : fenv_t)
+let map_to_json f (ll : t ll_t) : t ll_t =
+  map (fun j -> j |> J.to_json |> f) ll
 
+let functions = ref ([] : fenv_t)
 let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
   match e with
     ExpDot -> Right (of_list [j])
 
-  | ExpInt n -> Right (of_list [`Int n])
+  | ExpInt n -> Right (of_list [J.from_json (`Int n)])
 
-  | ExpBool b -> Right (of_list [`Bool b])
+  | ExpBool b -> Right (of_list [J.from_json (`Bool b)])
 
-  | ExpString s -> Right (of_list [`String s])
+  | ExpString s -> Right (of_list [J.from_json (`String s)])
 
   | ExpEmpty -> Right nil
 
   | ExpDotField f ->
-    j |> object_field f |> inLeft
+    j |> J.object_field f |> inLeft
 
   | ExpField (e,f) ->
-    j |> interp0 fenv denv benv e |> of_choice |> map (fun j -> j |> object_field f |> inLeft) |> inRight
+    j |> interp0 fenv denv benv e |> of_choice |> map (fun j -> j |> J.object_field f |> inLeft) |> inRight
 
   | ExpDict l ->
     let rec edrec l j = match l with
         [] ->
-        j |> (fun j -> inLeft (`Assoc []))
+        j |> (fun j -> inLeft (J.from_json (`Assoc [])))
 
       | ((ke,ve)::l) ->
         j
         |> interp0 fenv denv benv ke
         |> of_choice
-        |> map (fun (`String k : t) -> j |> interp0 fenv denv benv ve |> of_choice |> map (fun v ->
+        |> map_to_json (fun (`String k) -> j |> interp0 fenv denv benv ve |> of_choice |> map_to_json (fun v ->
             j
             |> edrec l
             |> of_choice
-            |> map (fun (`Assoc l : t) ->
-                Left(`Assoc ((k,v)::l)))
+            |> map_to_json (fun (`Assoc l) ->
+                Left(J.from_json (`Assoc ((k,v)::l))))
             |> inRight
           )
                                        |> inRight
@@ -54,14 +101,14 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
     in j
        |> edrec l
        |> of_choice
-       |> map (function `Assoc l -> Left(`Assoc (sort_object_keys l)))
+       |> map_to_json (function `Assoc l -> Left(J.from_json (`Assoc (sort_object_keys l))))
        |> inRight
 
   | ExpBrackets e ->
     j
     |> interp0 fenv denv benv e
     |> of_choice
-    |> map (fun j -> j |> array_list  |> inRight)
+    |> map (fun j -> j |> J.array_list  |> inRight)
     |> inRight
 
   | ExpSeq(ExpDataBind(e1, id),e2) ->
@@ -144,7 +191,7 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
     |> interp0 fenv denv benv e
     |> of_choice
     |> to_list
-    |> (fun l -> Left(`List l))
+    |> (fun l -> Left(J.from_json (`List (List.map J.to_json l))))
 
   | ExpConcat(e1,e2) ->
     j
@@ -164,11 +211,11 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
         |> interp0 fenv denv benv e2
         |> of_choice
         |> map (fun j2 ->
-            (match (j1, j2) with
-               (`Assoc _, `String s) -> object_field  s j1
-             | (`Null, `String _) -> `Null
-             | (`List _, `Int n) -> array_deref  n j1
-             | (`Null, `Int n) -> `Null
+            (match (J.to_json j1, J.to_json j2) with
+               (`Assoc _, `String s) -> J.object_field  s j1
+             | (`Null, `String _) -> J.from_json `Null
+             | (`List _, `Int n) -> J.array_deref n j1
+             | (`Null, `Int n) -> J.from_json `Null
              | (`Assoc _, _) ->
                jqexception "interp0: cannot deref object with non-string"
              | (`List _, _) ->
@@ -183,7 +230,7 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
               |> interp0 fenv denv benv e1
               |> of_choice
               |> to_list in
-      if List.for_all (fun x -> x = `Null || x = `Bool false) l then
+      if List.for_all (fun x -> J.to_json x = `Null || J.to_json x = `Bool false) l then
         j |> interp0 fenv denv benv e2
       else l |> of_list |> inRight
   end
@@ -192,18 +239,18 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
     j
     |> interp0 fenv denv benv e
     |> of_choice
-    |> map (function `Int n -> Left(`Int (- n)))
+    |> map_to_json (function `Int n -> Left(J.from_json (`Int (- n))))
     |> inRight
 
   | ExpSlice(e, Some e1, None) ->
     j
     |> interp0 fenv denv benv e
     |> of_choice
-    |> map (function `List l ->
+    |> map_to_json (function `List l ->
         j
         |> interp0 fenv denv benv e1
         |> of_choice
-        |> map (function `Int n -> Left (`List (slice (Some n) None l)))
+        |> map_to_json (function `Int n -> Left (J.from_json (`List (slice (Some n) None l))))
         |> inRight)
     |> inRight
 
@@ -211,11 +258,11 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
     j
     |> interp0 fenv denv benv e
     |> of_choice
-    |> map (function `List l ->
+    |> map_to_json (function `List l ->
         j
         |> interp0 fenv denv benv e2
         |> of_choice
-        |> map (function `Int m -> Left (`List (slice None (Some m) l)))
+        |> map_to_json (function `Int m -> Left (J.from_json (`List (slice None (Some m) l))))
         |> inRight)
     |> inRight
 
@@ -223,30 +270,30 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
     j
     |> interp0 fenv denv benv e
     |> of_choice
-    |> map (function `List l ->
+    |> map_to_json (function `List l ->
         j
         |> interp0 fenv denv benv e1
         |> of_choice
-        |> map (function `Int n ->
+        |> map_to_json (function `Int n ->
             j
             |> interp0 fenv denv benv e2
             |> of_choice
-            |> map (function `Int m -> Left (`List (slice (Some n) (Some m) l)))
+            |> map_to_json (function `Int m -> Left (J.from_json (`List (slice (Some n) (Some m) l))))
             |> inRight)
         |> inRight)
     |> inRight
 
   | ExpRecurse ->
-    let rec rrec j (acc : t list) =
-      let acc = j::acc in
+    let rec rrec j acc =
+      let acc = (J.from_json j)::acc in
       match j with
         `List l -> List.fold_right rrec l acc
       | `Assoc l -> List.fold_right rrec (List.map snd l) acc
       | _ -> acc in
-    rrec j [] |> List.rev |> of_list |> inRight
+    rrec (J.to_json j) [] |> List.rev |> of_list |> inRight
 
   | ExpAdd (e1,e2) ->
-    binop fenv denv benv (function ((j1 : t) , (j2 : t)) -> match (j1, j2) with
+    binop fenv denv benv (function ((j1 : Yojson.Basic.t) , (j2 : Yojson.Basic.t)) -> match (j1, j2) with
           (`Int n, `Int m) -> `Int(n+m)
         | (`Float n, `Int m) -> `Float(n +. float_of_int m)
         | (`Int n, `Float m) -> `Float(float_of_int n +. m)
@@ -264,7 +311,7 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
       e1 e2 j
 
   | ExpSub (e1,e2) ->
-    binop fenv denv benv (function ((j1 : t) , (j2 : t)) -> match (j1, j2) with
+    binop fenv denv benv (function (j1 , j2) -> match (j1, j2) with
           (`Int n, `Int m) -> `Int(n-m)
         | (`Float n, `Int m) -> `Float(n -. float_of_int m)
         | (`Int n, `Float m) -> `Float(float_of_int n -. m)
@@ -274,7 +321,7 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
       e1 e2 j
 
   | ExpMul (e1,e2) ->
-    binop fenv denv benv (function ((j1 : t) , (j2 : t)) -> match (j1, j2) with
+    binop fenv denv benv (function (j1 , j2) -> match (j1, j2) with
           (`Int n, `Int m) -> `Int(n*m)
         | (`Float n, `Int m) -> `Float(n *. float_of_int m)
         | (`Int n, `Float m) -> `Float(float_of_int n *. m)
@@ -290,7 +337,7 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
       let r = n /. m in
       if Float.is_finite r then r
       else jqexception "floating-point division produce non-numeric result" in
-    binop fenv denv benv (function ((j1 : t) , (j2 : t)) -> match (j1, j2) with
+    binop fenv denv benv (function (j1 , j2) -> match (j1, j2) with
           (`Int n, `Int m) -> `Float(div_float (float_of_int n) (float_of_int m))
         | (`Float n, `Int m) -> `Float(div_float n (float_of_int m))
         | (`Int n, `Float m) -> `Float(div_float (float_of_int n) m)
@@ -301,7 +348,7 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
 
   | ExpMod (e1,e2) ->
     let mod_float n m = fst(modf(n /. m)) in
-    binop fenv denv benv (function ((j1 : t) , (j2 : t)) -> match (j1, j2) with
+    binop fenv denv benv (function (j1 , j2) -> match (j1, j2) with
           (`Int n, `Int m) -> `Int(n mod m)
         | (`Float n, `Int m) -> `Float(mod_float n (float_of_int m))
         | (`Int n, `Float m) -> `Float(mod_float (float_of_int n) m)
@@ -332,11 +379,11 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
     j
     |> interp0 fenv denv benv e1
     |> of_choice
-    |> map (fun j1 ->
+    |> map_to_json (fun j1 ->
         j
         |> interp0 fenv denv benv e2
         |> of_choice
-        |> map (fun j2 -> Left (`Bool (j1 = j2)))
+        |> map_to_json (fun j2 -> Left (J.from_json (`Bool (j1 = j2))))
         |> inRight)
     |> inRight
 
@@ -344,11 +391,11 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
     j
     |> interp0 fenv denv benv e1
     |> of_choice
-    |> map (fun j1 ->
+    |> map_to_json (fun j1 ->
         j
         |> interp0 fenv denv benv e2
         |> of_choice
-        |> map (fun j2 -> Left (`Bool (j1 <> j2)))
+        |> map_to_json (fun j2 -> Left (J.from_json (`Bool (j1 <> j2))))
         |> inRight)
     |> inRight
          
@@ -356,11 +403,11 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
     j
     |> interp0 fenv denv benv e1
     |> of_choice
-    |> map (fun j1 ->
+    |> map_to_json (fun j1 ->
         j
         |> interp0 fenv denv benv e2
         |> of_choice
-        |> map (fun j2 -> Left (`Bool (j1 < j2)))
+        |> map_to_json (fun j2 -> Left (J.from_json (`Bool (j1 < j2))))
         |> inRight)
     |> inRight
          
@@ -368,11 +415,11 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
     j
     |> interp0 fenv denv benv e1
     |> of_choice
-    |> map (fun j1 ->
+    |> map_to_json (fun j1 ->
         j
         |> interp0 fenv denv benv e2
         |> of_choice
-        |> map (fun j2 -> Left (`Bool (j1 > j2)))
+        |> map_to_json (fun j2 -> Left (J.from_json (`Bool (j1 > j2))))
         |> inRight)
     |> inRight
          
@@ -380,11 +427,11 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
     j
     |> interp0 fenv denv benv e1
     |> of_choice
-    |> map (fun j1 ->
+    |> map_to_json (fun j1 ->
         j
         |> interp0 fenv denv benv e2
         |> of_choice
-        |> map (fun j2 -> Left (`Bool (j1 <= j2)))
+        |> map_to_json (fun j2 -> Left (J.from_json (`Bool (j1 <= j2))))
         |> inRight)
     |> inRight
          
@@ -392,11 +439,11 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
     j
     |> interp0 fenv denv benv e1
     |> of_choice
-    |> map (fun j1 ->
+    |> map_to_json (fun j1 ->
         j
         |> interp0 fenv denv benv e2
         |> of_choice
-        |> map (fun j2 -> Left (`Bool (j1 >= j2)))
+        |> map_to_json (fun j2 -> Left (J.from_json (`Bool (j1 >= j2))))
         |> inRight)
     |> inRight
          
@@ -407,7 +454,7 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
     j
     |> interp0 fenv denv benv e1
     |> of_choice
-    |> map (function
+    |> map_to_json (function
           `Bool false ->
           j
           |> interp0 fenv denv benv (ExpCond(l, e))
@@ -426,7 +473,7 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
         |> of_list
         |> inRight
       with JQException msg ->
-        (`String msg)
+        (`String msg) |> J.from_json
         |> interp0 fenv denv benv e2
     end
 
@@ -436,12 +483,12 @@ and binop fenv denv benv f e1 e2 j =
   j
   |> interp0 fenv denv benv e1
   |> of_choice
-  |> map (fun j1 ->
+  |> map_to_json (fun j1 ->
       j
       |> interp0 fenv denv benv e2
       |> of_choice
-      |> map (fun j2 ->
-          let jr = f (j1, j2) in
+      |> map_to_json (fun j2 ->
+          let jr = J.from_json (f (j1, j2)) in
           jr |> inLeft)
       |> inRight)
   |> inRight
@@ -451,30 +498,33 @@ let interp e j = interp0 !functions [] [] e j
 
 let add_function fname code =
   functions := (fname, code):: !functions
-;;
+
 
 let interp_tuple l j : (t, t ll_t) choice =
   let rec edrec l (j : t) = match l with
       [] ->
-      j |> (fun j -> inLeft (`List []))
+      j |> (fun j -> inLeft (J.from_json (`List [])))
 
     | (f::l) ->
       j
-      |> f |> of_choice |> map (fun v ->
+      |> f |> of_choice |> map_to_json (fun v ->
           j
           |> edrec l
           |> of_choice
-          |> map (fun (`List l : t) ->
-              Left(`List (v::l)))
+          |> map_to_json (fun (`List l) ->
+              Left (J.from_json (`List (v::l))))
           |> inRight
         )
       |> inRight
   in
   j
   |> edrec l
-;;
 
-add_function "length"
+end
+
+module IJ = Gen(JsonCarrier)
+
+IJ.add_function "length"
   (function [] ->  function
         `String s -> Left (`Int(utf8_length s))
       | `List l -> Left (`Int(List.length l))
@@ -483,27 +533,27 @@ add_function "length"
   )
 ;;
 
-add_function "utf8bytelength"
+IJ.add_function "utf8bytelength"
   (function [] -> function
         `String s -> Left (`Int(String.length s))
   )
 ;;
 
-add_function "keys"
+IJ.add_function "keys"
   (function [] -> function
         `Assoc l -> Left (`List(List.sort Stdlib.compare (List.map (fun (k,_) -> `String k) l)))
       | `List l -> Left (`List(List.mapi (fun i _ -> `Int i) l))
   )
 ;;
 
-add_function "keys_unsorted"
+IJ.add_function "keys_unsorted"
   (function [] -> function
         `Assoc l -> Left (`List(List.map (fun (k,_) -> `String k) l))
       | `List l -> Left (`List(List.mapi (fun i _ -> `Int i) l))
   )
 ;;
 
-add_function "has"
+IJ.add_function "has"
   (function
       [f0] ->
       (function
@@ -511,21 +561,21 @@ add_function "has"
           j
           |> f0
           |> of_choice
-          |> map (function `String k ->
+          |> map (function (`String k : IJ.t) ->
               Left(`Bool (List.mem_assoc k l)))
           |> inRight
         | (`List l as j) ->
           j
           |> f0
           |> of_choice
-          |> map (function `Int n ->
+          |> map (function (`Int n : IJ.t) ->
               Left (`Bool (n >= 0 && n < List.length l)))
           |> inRight
       )
   )
 ;;
 
-add_function "in"
+IJ.add_function "in"
   (function
       [f0] ->
       (function
@@ -533,21 +583,21 @@ add_function "in"
           j
           |> f0
           |> of_choice
-          |> map (function `Assoc l ->
+          |> map (function (`Assoc l : IJ.t) ->
               Left(`Bool (List.mem_assoc k l)))
           |> inRight
         | (`Int n as j) ->
           j
           |> f0
           |> of_choice
-          |> map (function `List l ->
+          |> map (function (`List l : IJ.t) ->
               Left (`Bool (n >= 0 && n < List.length l)))
           |> inRight
       )
   )
 ;;
 
-add_function "select"
+IJ.add_function "select"
   (function
       [f0] ->
       (function j ->
@@ -559,15 +609,17 @@ add_function "select"
 ;;
 
 
-add_function "error"
+IJ.add_function "error"
   (function
       [f0] ->
       (function j ->
          j
          |> f0
          |> of_choice
-         |> map (function `String msg -> jqexception msg)
+         |> map (function (`String msg : IJ.t) -> jqexception msg)
          |> inRight
       )
   )
 ;;
+
+include IJ

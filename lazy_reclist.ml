@@ -1,5 +1,3 @@
-open Yojson.Basic
-
 open Asttools
 open Jqtypes
 
@@ -69,7 +67,7 @@ let last ll =
   | h::_ -> h
 
 
-  let reduce benv (f : t -> t -> t ll_t) (jinit : t) (ll : t ll_t) : t ll_t =
+  let reduce benv (f : 'a -> 'a -> 'a ll_t) (jinit : 'a) (ll : 'a ll_t) : 'a ll_t =
     let rec rrec (jv, ll) =
       match match_ll ll with
         None -> singleton jv
@@ -80,7 +78,7 @@ let last ll =
         end
     in rrec (jinit, ll)
 
-  let foreach benv (f : t -> t -> t ll_t) update (jinit : t) (ll : t ll_t) =
+  let foreach benv (f : 'a -> 'a -> 'a ll_t) update (jinit : 'a) (ll : 'a ll_t) =
     let rec frec (jv, ll) =
       match match_ll ll with
         None -> nil
@@ -122,7 +120,7 @@ module EagerList = struct
       [] -> failwith "EagerList.last: list was empty -- must be nonempty"
     | h::_ -> h
 
-  let reduce benv (f : t -> t -> t ll_t) (jinit : t) (ll : t ll_t) : t ll_t =
+  let reduce benv (f : 'a -> 'a -> 'a ll_t) (jinit : 'a) (ll : 'a ll_t) : 'a ll_t =
     let rec rrec (jv, ll) =
       match match_ll ll with
         None -> singleton jv
@@ -133,7 +131,7 @@ module EagerList = struct
         end
     in rrec (jinit, ll)
 
-  let foreach benv (f : t -> t -> t ll_t) update (jinit : t) (ll : t ll_t) =
+  let foreach benv (f : 'a -> 'a -> 'a ll_t) update (jinit : 'a) (ll : 'a ll_t) =
     let rec frec (jv, ll) =
       match match_ll ll with
         None -> nil

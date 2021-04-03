@@ -72,9 +72,6 @@ let gather_to_list
 let gather_to_array f ll : Yojson.Basic.t =
   ll |> gather_to_list f |> (fun l -> `List l)
 
-let map (f : t -> (t, t ll_t) choice) ll : t ll_t =
-  Lazy_reclist.map f ll
-
 let firstn n l =
   let rec aux acc = function
       (0, l) -> List.rev acc
