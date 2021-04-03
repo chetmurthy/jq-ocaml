@@ -693,6 +693,35 @@ I.add_function "error"
   )
 ;;
 
+I.add_function "getpath"
+  (function
+      [f0] ->
+      (function j ->
+          j
+          |> f0
+          |> of_choice
+          |> I.map_to_json (fun jp ->
+              let rec traverse = function
+                  (j, []) -> j
+                | (`List l, (`Int n)::tl) ->
+                  if 0 <= n && n < List.length l then
+                    traverse (List.nth l n, tl)
+                  else `Null
+                | (`Assoc l, (`String k)::tl) -> begin match List.assoc k l with
+                      v -> traverse (v, tl)
+                    | exception Not_found -> `Null
+                  end
+                  | (`Null, _) -> `Null
+                  | _ -> jqexception "getpath: can only index array & object"
+              in match jp with
+              `List l -> Left (I.C.from_json (traverse (I.C.to_json j, l)))
+              | _ -> jqexception "getpath: path must be specified as an array"
+            )
+          |> inRight
+      )
+  )
+;;
+
 I.add_function "path"
   (function
       [f0] ->
