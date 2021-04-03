@@ -532,36 +532,43 @@ module JsonCarrier : (CARRIER with type t = Yojson.Basic.t) = struct
   let array_deref = Jqutil.array_deref
 end
 
-type json_path_t = Yojson.Basic.t * Yojson.Basic.t list
+type json_path_t = Yojson.Basic.t * Yojson.Basic.t list option
 module PathCarrier : (CARRIER with type t = json_path_t) = struct
   type t = json_path_t
   let to_json x = fst x
-  let from_json x = (x, [])
+  let from_json x = (x, Some [])
 
+  let add_int n = function
+      None -> None
+    | Some p -> Some ((`Int n)::p)
+
+  let add_string n = function
+      None -> None
+    | Some p -> Some ((`String n)::p)
 
 let object_field fname : t -> t = function
     (`Assoc l, p) -> begin match List.assoc fname l with
-      v -> (v, (`String fname)::p)
-      | exception Not_found -> (`Null, [])
+      v -> (v, add_string fname p)
+      | exception Not_found -> (`Null, None)
     end
 
-  | (`Null, p) -> (`Null, (`String fname)::p)
+  | (`Null, p) -> (`Null, add_string fname p)
   | _ -> jqexception "object_field: not an object"
 
 let array_deref n : t -> t = function
     (`List l, p) ->
     let alen = List.length l in
     let n = if n < 0 then alen + n else n in
-    if n < 0 || n >= alen then (`Null, (`Int n)::p)
-    else (List.nth l n, (`Int n)::p)
+    if n < 0 || n >= alen then (`Null, add_int n p)
+    else (List.nth l n, add_int n p)
 
-  | (`Null, p) -> (`Null, (`Int n)::p)
+  | (`Null, p) -> (`Null, add_int n p)
 
   | _ -> jqexception "array_deref: not an array"
 
 let array_list : t -> t ll_t = function
-    (`List l, p) -> of_list (List.mapi (fun i v -> (v,(`Int i)::p)) l)
-  | (`Assoc l, p) -> of_list (List.mapi (fun i (k,v) -> (v, (`String k)::p)) l)
+    (`List l, p) -> of_list (List.mapi (fun i v -> (v,add_int i p)) l)
+  | (`Assoc l, p) -> of_list (List.mapi (fun i (k,v) -> (v, add_string k p)) l)
   | _ -> jqexception "array_list: not an array or object"
 
 end
