@@ -74,7 +74,6 @@ let last ll =
       | Some (j, ll) -> begin
           match last (f jv j) with
             newjv -> rrec (newjv, ll)
-          | exception JQBreak s when List.mem s benv -> nil
         end
     in rrec (jinit, ll)
 
@@ -85,12 +84,10 @@ let last ll =
       | Some(j, ll) -> begin match last (f jv j) with
             newjv -> begin match  update newjv j with
                updv ->
-               cons_ll updv (frec (newjv, ll))
-              | exception JQBreak s when List.mem s benv -> nil
+               cons_ll updv (lazy (Lazy.force (frec (newjv, ll))))
             end
-          | exception JQBreak s when List.mem s benv -> nil
         end
-    in frec (jinit, ll)
+    in lazy (Lazy.force (frec (jinit, ll)))
 end
 
 module EagerList = struct

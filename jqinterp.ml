@@ -146,20 +146,20 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
       Fmt.(failwithf "interp0: label %s was not lexically outer from break" s)
 
   | ExpReduce(e, id, init, step) ->
-    j
-    |> interp0 fenv denv benv init
-    |> of_choice
-    |> map (fun jinit ->
-        j
-        |> interp0 fenv denv benv e
-        |> of_choice
-        |> reduce benv (fun jv j' ->
-            jv
-            |> interp0 fenv ((id, j')::denv) benv step
-            |> of_choice)
-          jinit
-        |> inRight
-      )
+    lazy (Lazy.force (j
+                      |> interp0 fenv denv benv init
+                      |> of_choice
+                      |> map (fun jinit ->
+                          j
+                          |> interp0 fenv denv benv e
+                          |> of_choice
+                          |> reduce benv (fun jv j' ->
+                              jv
+                              |> interp0 fenv ((id, j')::denv) benv step
+                              |> of_choice)
+                            jinit
+                          |> inRight
+                        )))
     |> inRight
 
   | ExpForeach(e, id, init, step, update) ->
