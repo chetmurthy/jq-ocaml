@@ -224,6 +224,7 @@ let execute = "execute" >::: [
       ; (["[1,1]"; "[2,3]"; "[3,6]"; "[4,10]"; "[5,15]"], {|label $here | foreach (1,2,3,4,5,10) as $n ( 0; if $n >= 10 then break $here else . + $n end; [$n, .])|}, [{|0|}])
       ; (["[1,1]"; "[2,3]"; "[3,6]"; "[4,10]"; "[5,15]"], {|label $here | foreach (1,2,3,4,5) as $n ( 0; . + $n; if $n >= 10 then break $here else [$n, .] end)|}, [{|0|}])
       ; (["[1,1]"; "[2,3]"; "[3,6]"; "[4,10]"; "[5,15]"], {|label $here | foreach (1,2,3,4,5,10) as $n ( 0; . + $n; if $n >= 10 then break $here else [$n, .] end)|}, [{|0|}])
+      ; ([{|[0,1,"hi!"]|}], {|[(label $here | .[] | if . > 1 then break $here else . end), "hi!"]|}, [{|[0,1,2]|}])
       ; ([], {|empty|}, [{|0|}; {|0|}])
       ; ([{|"object_field: not an object"|}], {|try .a catch .|}, [{|[0]|}])
       ; ([], {|try .a|}, [{|[0]|}])

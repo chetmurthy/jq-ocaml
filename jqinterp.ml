@@ -38,6 +38,7 @@ module type INTERP = sig
   val interp : exp -> closure_t
   val add_function : string -> (closure_t list -> closure_t) -> unit
   val interp_tuple : (closure_t) list -> closure_t
+  val exec0 : exp -> Yojson.Basic.t list -> t ll_t
   val exec : exp -> Yojson.Basic.t list -> t list
 end
 
@@ -122,13 +123,25 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
     end
 
   | ExpSeq(ExpLabel id,e2) ->
-    j |> interp0 fenv denv (id::benv) e2
+    let benv = id::benv in
+    j
+    |> interp0 fenv denv benv e2
+    |> of_choice
+    |> (fun ll ->
+        let rec truncate ll =
+          match match_ll ll with
+            None -> nil
+          | Some(v,ll) -> lazy (Lazy.force (cons_it v (truncate ll)))
+          | exception JQBreak s when List.mem s benv ->
+            nil
+        in truncate ll)
+    |> inRight
 
   | ExpLabel _ as e ->
     Fmt.(failwithf "interp0: exp %a MUST be part of a sequence of filters" pp_exp e)
 
   | ExpBreak s ->
-    if List.mem s benv then  jqbreak s
+    if List.mem s benv then Right (lazy (Lazy.force (jqbreak s)))
     else
       Fmt.(failwithf "interp0: label %s was not lexically outer from break" s)
 
@@ -512,11 +525,15 @@ let interp_tuple l j : (t, t ll_t) choice =
   j
   |> edrec l
 
-let exec e l =
+let exec0 e l =
   l
   |> List.map C.from_json
   |> of_list
   |> map (interp e)
+
+let exec e l =
+  l
+  |> exec0 e
   |> to_list
 
 end
