@@ -276,13 +276,15 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
     |> inRight
 
   | ExpRecurse ->
-    let rec rrec j acc =
-      let acc = (C.from_json j)::acc in
-      match j with
-        `List l -> List.fold_right rrec l acc
-      | `Assoc l -> List.fold_right rrec (List.map snd l) acc
-      | _ -> acc in
-    rrec (C.to_json j) [] |> List.rev |> of_list |> inRight
+    let rec rrec j =
+      match C.to_json j with
+        `List _ | `Assoc _ ->
+        Right (cons_it j
+                 (j
+                  |> C.array_list
+                  |> map rrec))
+      | _ -> Left j in
+    rrec j
 
   | ExpAdd (e1,e2) ->
     binop fenv denv benv (function ((j1 : Yojson.Basic.t) , (j2 : Yojson.Basic.t)) -> match (j1, j2) with
@@ -539,27 +541,27 @@ module PathCarrier : (CARRIER with type t = json_path_t) = struct
 
 let object_field fname : t -> t = function
     (`Assoc l, p) -> begin match List.assoc fname l with
-      v -> (v, p@[`String fname])
+      v -> (v, (`String fname)::p)
       | exception Not_found -> (`Null, [])
     end
 
-  | (`Null, p) -> (`Null, p@[`String fname])
+  | (`Null, p) -> (`Null, (`String fname)::p)
   | _ -> jqexception "object_field: not an object"
 
 let array_deref n : t -> t = function
     (`List l, p) ->
     let alen = List.length l in
     let n = if n < 0 then alen + n else n in
-    if n < 0 || n >= alen then (`Null, p@[`Int n])
-    else (List.nth l n, p@[`Int n])
+    if n < 0 || n >= alen then (`Null, (`Int n)::p)
+    else (List.nth l n, (`Int n)::p)
 
-  | (`Null, p) -> (`Null, p@[`Int n])
+  | (`Null, p) -> (`Null, (`Int n)::p)
 
   | _ -> jqexception "array_deref: not an array"
 
 let array_list : t -> t ll_t = function
-    (`List l, p) -> of_list (List.mapi (fun i v -> (v,p@[`Int i])) l)
-  | (`Assoc l, p) -> of_list (List.mapi (fun i (k,v) -> (v, p@[`String k])) l)
+    (`List l, p) -> of_list (List.mapi (fun i v -> (v,(`Int i)::p)) l)
+  | (`Assoc l, p) -> of_list (List.mapi (fun i (k,v) -> (v, (`String k)::p)) l)
   | _ -> jqexception "array_list: not an array or object"
 
 end
