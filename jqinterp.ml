@@ -26,17 +26,17 @@ module type INTERP = sig
   val map_to_json :
     (Yojson.Basic.t -> (t, t ll_t) choice) -> t ll_t -> t ll_t
   val predefined_functions : fenv_t ref
-  val interp0 :
-    env_t -> exp -> closure_t
+  val interp0 : env_t -> exp -> closure_t
+  val interp0_funcdefs : env_t -> funcdef list -> env_t
   val binop :
     env_t -> (Yojson.Basic.t * Yojson.Basic.t -> Yojson.Basic.t) ->
     exp ->
     exp -> closure_t
-  val interp : ?functions:fenv_t -> exp -> closure_t
+  val interp : ?fenv:fenv_t -> exp -> closure_t
   val add_function : string * int -> (closure_t list -> closure_t) -> unit
   val interp_tuple : (closure_t) list -> closure_t
-  val exec0 : ?functions:fenv_t -> exp -> Yojson.Basic.t list -> t ll_t
-  val exec : ?functions:fenv_t -> exp -> Yojson.Basic.t list -> t list
+  val exec0 : ?fenv:fenv_t -> exp -> Yojson.Basic.t list -> t ll_t
+  val exec : ?fenv:fenv_t -> exp -> Yojson.Basic.t list -> t list
 end
 
 
@@ -378,7 +378,7 @@ let rec interp0 env e (j : t) : (t, t ll_t) choice =
     |> code argcl
 
   | ExpFuncDef(fd, e) ->
-    let env = interp_funcdef env fd in
+    let env = interp0_funcdef env fd in
     j |> interp0 env e
 
   | ExpEq (e1, e2) ->
@@ -499,7 +499,7 @@ and binop env f e1 e2 j =
       |> inRight)
   |> inRight
 
-and interp_funcdef (fenv, denv, benv) (fname, formals, body) =
+and interp0_funcdef (fenv, denv, benv) (fname, formals, body) =
   let fcode actuals j =
     if List.length formals <> List.length actuals then
       Fmt.(failwithf "function %a: formal-actual length mismatch" Dump.string fname) ;
@@ -508,15 +508,15 @@ and interp_funcdef (fenv, denv, benv) (fname, formals, body) =
     j |> interp0 ((newenv@fenv), denv, benv) body in
   ((((fname, List.length formals), fcode)::fenv), denv, benv)
 
-and interp_funcdefs env l =
-  List.fold_left interp_funcdef env l
+and interp0_funcdefs env l =
+  List.fold_left interp0_funcdef env l
 
-let interp ?(functions=[]) e j =
-  interp0 ((functions @ !predefined_functions), [], []) e j
+let interp ?(fenv=[]) e j =
+  let fenv = if fenv = [] then !predefined_functions else fenv in
+  interp0 (fenv, [], []) e j
 
 let add_function fname code =
   predefined_functions := (fname, code):: !predefined_functions
-
 
 let interp_tuple l j : (t, t ll_t) choice =
   let rec edrec l (j : t) = match l with
@@ -538,15 +538,15 @@ let interp_tuple l j : (t, t ll_t) choice =
   j
   |> edrec l
 
-let exec0 ?(functions=[]) e l =
+let exec0 ?(fenv=[]) e l =
   l
   |> List.map C.from_json
   |> of_list
-  |> map (interp ~functions e)
+  |> map (interp ~fenv e)
 
-let exec ?(functions=[]) e l =
+let exec ?(fenv=[]) e l =
   l
-  |> exec0 ~functions e
+  |> exec0 ~fenv e
   |> to_list
 
 end

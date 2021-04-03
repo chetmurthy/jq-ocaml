@@ -4,6 +4,12 @@ jq_examples.cmo : \
 jq_examples.cmx : \
     lazy_reclist.cmx \
     jqutil.cmx
+jqexec.cmo : \
+    jqparse0.cmo \
+    jqinterp.cmo
+jqexec.cmx : \
+    jqparse0.cmx \
+    jqinterp.cmx
 jqinterp.cmo : \
     lazy_reclist.cmo \
     jqutil.cmo \
@@ -16,12 +22,14 @@ jqtest.cmo : \
     lazy_reclist.cmo \
     jqtypes.cmo \
     jqparse0.cmo \
-    jqinterp.cmo
+    jqinterp.cmo \
+    jqexec.cmo
 jqtest.cmx : \
     lazy_reclist.cmx \
     jqtypes.cmx \
     jqparse0.cmx \
-    jqinterp.cmx
+    jqinterp.cmx \
+    jqexec.cmx
 jqtypes.cmo :
 jqtypes.cmx :
 jqutil.cmo : \

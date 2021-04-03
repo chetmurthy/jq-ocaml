@@ -30,11 +30,11 @@ let assert_raises_exn_pattern ?msg pattern f =
     f
 
 let of_string_exn s = s |> parse_string parse_exp_eoi
-let exec s js =
+let exec ?(builtins=false) s js =
   let e = of_string_exn s in
   js
   |> List.map Yojson.Basic.from_string
-  |> I.exec e
+  |> Jqexec.exec ~builtins e
   |> List.map I.C.to_json
   |> List.map Yojson.Basic.to_string
 

@@ -48,7 +48,7 @@ type exp =
   | ExpNeg of exp
   | ExpDesAlt of exp * exp
   | ExpFuncall of string * exp list
-  | ExpFuncDef of (string * string list * exp) * exp
+  | ExpFuncDef of funcdef * exp
   | ExpDataBind of exp * string
   | ExpReduce of exp * string * exp * exp
   | ExpForeach of exp * string * exp * exp * exp
@@ -57,4 +57,5 @@ type exp =
   | ExpEmpty
   | ExpTryCatch of exp * exp
 
+and funcdef = string * string list * exp
  [@@deriving show { with_path = false },eq]
