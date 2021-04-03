@@ -22,17 +22,14 @@ module type INTERP = sig
   type t = C.t
   type closure_t = t -> (t, t ll_t) choice
   type fenv_t = ((string * int) * (closure_t list -> closure_t)) list
+  type env_t = fenv_t * (string * t) list * string list
   val map_to_json :
     (Yojson.Basic.t -> (t, t ll_t) choice) -> t ll_t -> t ll_t
   val predefined_functions : fenv_t ref
   val interp0 :
-    fenv_t ->
-    (string * t) list -> string list -> exp -> closure_t
+    env_t -> exp -> closure_t
   val binop :
-    fenv_t ->
-    (string * t) list ->
-    string list ->
-    (Yojson.Basic.t * Yojson.Basic.t -> Yojson.Basic.t) ->
+    env_t -> (Yojson.Basic.t * Yojson.Basic.t -> Yojson.Basic.t) ->
     exp ->
     exp -> closure_t
   val interp : ?functions:fenv_t -> exp -> closure_t
@@ -48,12 +45,13 @@ module Gen(C : CARRIER) : (INTERP with module C = C) = struct
 type t = C.t
 type closure_t = t -> (t,t ll_t) choice
 type fenv_t = ((string * int) * (closure_t list -> closure_t)) list
+type env_t = fenv_t * (string * t) list * string list
 
 let map_to_json f (ll : t ll_t) : t ll_t =
   map (fun j -> j |> C.to_json |> f) ll
 
 let predefined_functions = ref ([] : fenv_t)
-let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
+let rec interp0 env e (j : t) : (t, t ll_t) choice =
   match e with
     ExpDot -> Right (of_list [j])
 
@@ -69,7 +67,7 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
     j |> C.object_field f |> inLeft
 
   | ExpField (e,f) ->
-    j |> interp0 fenv denv benv e |> of_choice |> map (fun j -> j |> C.object_field f |> inLeft) |> inRight
+    j |> interp0 env e |> of_choice |> map (fun j -> j |> C.object_field f |> inLeft) |> inRight
 
   | ExpDict l ->
     let rec edrec l j = match l with
@@ -78,9 +76,9 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
 
       | ((ke,ve)::l) ->
         j
-        |> interp0 fenv denv benv ke
+        |> interp0 env ke
         |> of_choice
-        |> map_to_json (fun (`String k) -> j |> interp0 fenv denv benv ve |> of_choice |> map_to_json (fun v ->
+        |> map_to_json (fun (`String k) -> j |> interp0 env ve |> of_choice |> map_to_json (fun v ->
             j
             |> edrec l
             |> of_choice
@@ -99,33 +97,37 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
 
   | ExpBrackets e ->
     j
-    |> interp0 fenv denv benv e
+    |> interp0 env e
     |> of_choice
     |> map (fun j -> j |> C.array_list  |> inRight)
     |> inRight
 
   | ExpSeq(ExpDataBind(e1, id),e2) ->
+    let (fenv, denv, benv) = env in
     j
-    |> interp0 fenv denv benv e1
+    |> interp0 env e1
     |> of_choice
     |> map (fun j' ->
         j
-        |> interp0 fenv ((id, j')::denv) benv e2
+        |> interp0 (fenv, (id, j')::denv, benv) e2
       )
     |> inRight
 
   | ExpDataBind (_, _) as e ->
     Fmt.(failwithf "interp0: exp %a MUST be part of a sequence of filters" pp_exp e)
 
-  | ExpDataVar s -> begin match List.assoc s denv with
+  | ExpDataVar s ->
+    let (fenv, denv, benv) = env in
+    begin match List.assoc s denv with
         v -> Left v
       | exception Not_found -> Fmt.(jqexceptionf "variable $%s not found in data-environment" s)
     end
 
   | ExpSeq(ExpLabel id,e2) ->
+    let (fenv, denv, benv) = env in
     let benv = id::benv in
     j
-    |> interp0 fenv denv benv e2
+    |> interp0 (fenv, denv, benv) e2
     |> of_choice
     |> (fun ll ->
         let rec truncate ll =
@@ -141,21 +143,23 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
     Fmt.(failwithf "interp0: exp %a MUST be part of a sequence of filters" pp_exp e)
 
   | ExpBreak s ->
+    let (fenv, denv, benv) = env in
     if List.mem s benv then Right (lazy (Lazy.force (jqbreak s)))
     else
       Fmt.(failwithf "interp0: label %s was not lexically outer from break" s)
 
   | ExpReduce(e, id, init, step) ->
+    let (fenv, denv, benv) = env in
     lazy (Lazy.force (j
-                      |> interp0 fenv denv benv init
+                      |> interp0 env init
                       |> of_choice
                       |> map (fun jinit ->
                           j
-                          |> interp0 fenv denv benv e
+                          |> interp0 env e
                           |> of_choice
                           |> reduce benv (fun jv j' ->
                               jv
-                              |> interp0 fenv ((id, j')::denv) benv step
+                              |> interp0 (fenv, ((id, j')::denv), benv) step
                               |> of_choice)
                             jinit
                           |> inRight
@@ -163,20 +167,21 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
     |> inRight
 
   | ExpForeach(e, id, init, step, update) ->
+    let (fenv, denv, benv) = env in
     j
-    |> interp0 fenv denv benv init
+    |> interp0 env init
     |> of_choice
     |> map (fun jinit ->
         j
-        |> interp0 fenv denv benv e
+        |> interp0 env e
         |> of_choice
         |> foreach benv (fun jv j' ->
             jv
-            |> interp0 fenv ((id, j')::denv) benv step
+            |> interp0 (fenv, ((id, j')::denv), benv) step
             |> of_choice)
           (fun jv j' ->
              jv
-             |> interp0 fenv ((id, j')::denv) benv update
+             |> interp0 (fenv, ((id, j')::denv), benv) update
              |> of_choice)
           jinit
         |> inRight
@@ -186,34 +191,34 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
 
   | ExpSeq(e1,e2) ->
     j
-    |> interp0 fenv denv benv e1
+    |> interp0 env e1
     |> of_choice
-    |> map (interp0 fenv denv benv e2)
+    |> map (interp0 env e2)
     |> inRight
 
   | ExpCollect e ->
     j
-    |> interp0 fenv denv benv e
+    |> interp0 env e
     |> of_choice
     |> to_list
     |> (fun l -> Left(C.from_json (`List (List.map C.to_json l))))
 
   | ExpConcat(e1,e2) ->
     j
-    |> interp0 fenv denv benv e1
+    |> interp0 env e1
     |> of_choice
     |> (fun ll1 -> j
-                   |> interp0 fenv denv benv e2
+                   |> interp0 env e2
                    |> of_choice
                    |> (fun ll2 -> Right(cons_ll ll1 (cons_ll ll2 nil))))
 
   | ExpDeref(e1, e2) ->
     j
-    |> interp0 fenv denv benv e1
+    |> interp0 env e1
     |> of_choice
     |> map (fun j1 ->
         j
-        |> interp0 fenv denv benv e2
+        |> interp0 env e2
         |> of_choice
         |> map (fun j2 ->
             (match (C.to_json j1, C.to_json j2) with
@@ -230,28 +235,28 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
 
   | ExpAlt (e1, e2) -> begin
       let l = j
-              |> interp0 fenv denv benv e1
+              |> interp0 env e1
               |> of_choice
               |> to_list in
       if List.for_all (fun x -> C.to_json x = `Null || C.to_json x = `Bool false) l then
-        j |> interp0 fenv denv benv e2
+        j |> interp0 env e2
       else l |> of_list |> inRight
   end
 
   | ExpNeg e ->
     j
-    |> interp0 fenv denv benv e
+    |> interp0 env e
     |> of_choice
     |> map_to_json (function `Int n -> Left(C.from_json (`Int (- n))))
     |> inRight
 
   | ExpSlice(e, Some e1, None) ->
     j
-    |> interp0 fenv denv benv e
+    |> interp0 env e
     |> of_choice
     |> map_to_json (function `List l ->
         j
-        |> interp0 fenv denv benv e1
+        |> interp0 env e1
         |> of_choice
         |> map_to_json (function `Int n -> Left (C.from_json (`List (slice (Some n) None l))))
         |> inRight)
@@ -259,11 +264,11 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
 
   | ExpSlice(e, None, Some e2) ->
     j
-    |> interp0 fenv denv benv e
+    |> interp0 env e
     |> of_choice
     |> map_to_json (function `List l ->
         j
-        |> interp0 fenv denv benv e2
+        |> interp0 env e2
         |> of_choice
         |> map_to_json (function `Int m -> Left (C.from_json (`List (slice None (Some m) l))))
         |> inRight)
@@ -271,15 +276,15 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
 
   | ExpSlice(e, Some e1, Some e2) ->
     j
-    |> interp0 fenv denv benv e
+    |> interp0 env e
     |> of_choice
     |> map_to_json (function `List l ->
         j
-        |> interp0 fenv denv benv e1
+        |> interp0 env e1
         |> of_choice
         |> map_to_json (function `Int n ->
             j
-            |> interp0 fenv denv benv e2
+            |> interp0 env e2
             |> of_choice
             |> map_to_json (function `Int m -> Left (C.from_json (`List (slice (Some n) (Some m) l))))
             |> inRight)
@@ -298,7 +303,7 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
     rrec j
 
   | ExpAdd (e1,e2) ->
-    binop fenv denv benv (function ((j1 : Yojson.Basic.t) , (j2 : Yojson.Basic.t)) -> match (j1, j2) with
+    binop env (function ((j1 : Yojson.Basic.t) , (j2 : Yojson.Basic.t)) -> match (j1, j2) with
           (`Int n, `Int m) -> `Int(n+m)
         | (`Float n, `Int m) -> `Float(n +. float_of_int m)
         | (`Int n, `Float m) -> `Float(float_of_int n +. m)
@@ -316,7 +321,7 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
       e1 e2 j
 
   | ExpSub (e1,e2) ->
-    binop fenv denv benv (function (j1 , j2) -> match (j1, j2) with
+    binop env (function (j1 , j2) -> match (j1, j2) with
           (`Int n, `Int m) -> `Int(n-m)
         | (`Float n, `Int m) -> `Float(n -. float_of_int m)
         | (`Int n, `Float m) -> `Float(float_of_int n -. m)
@@ -326,7 +331,7 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
       e1 e2 j
 
   | ExpMul (e1,e2) ->
-    binop fenv denv benv (function (j1 , j2) -> match (j1, j2) with
+    binop env (function (j1 , j2) -> match (j1, j2) with
           (`Int n, `Int m) -> `Int(n*m)
         | (`Float n, `Int m) -> `Float(n *. float_of_int m)
         | (`Int n, `Float m) -> `Float(float_of_int n *. m)
@@ -342,7 +347,7 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
       let r = n /. m in
       if Float.is_finite r then r
       else jqexception "floating-point division produce non-numeric result" in
-    binop fenv denv benv (function (j1 , j2) -> match (j1, j2) with
+    binop env (function (j1 , j2) -> match (j1, j2) with
           (`Int n, `Int m) -> `Float(div_float (float_of_int n) (float_of_int m))
         | (`Float n, `Int m) -> `Float(div_float n (float_of_int m))
         | (`Int n, `Float m) -> `Float(div_float (float_of_int n) m)
@@ -353,7 +358,7 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
 
   | ExpMod (e1,e2) ->
     let mod_float n m = fst(modf(n /. m)) in
-    binop fenv denv benv (function (j1 , j2) -> match (j1, j2) with
+    binop env (function (j1 , j2) -> match (j1, j2) with
           (`Int n, `Int m) -> `Int(n mod m)
         | (`Float n, `Int m) -> `Float(mod_float n (float_of_int m))
         | (`Int n, `Float m) -> `Float(mod_float (float_of_int n) m)
@@ -362,7 +367,8 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
       e1 e2 j
 
   | ExpFuncall(f, l) ->
-    let argcl = List.map (fun e -> interp0 fenv denv benv e) l in
+    let (fenv, denv, benv) = env in
+    let argcl = List.map (fun e -> interp0 env e) l in
     let code =
       match List.assoc (f, List.length l) fenv with
         f -> f
@@ -372,21 +378,22 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
     |> code argcl
 
   | ExpFuncDef((fname, formals, body), e) ->
+    let (fenv, denv, benv) = env in
     let fcode actuals j =
       if List.length formals <> List.length actuals then
         Fmt.(failwithf "function %a: formal-actual length mismatch" Dump.string fname) ;
       let newenv = List.map2 (fun f a ->
           ((f,0), fun [] -> a)) formals actuals in
-      j |> interp0 (newenv@fenv) denv benv body in
-    j |> interp0 (((fname, List.length formals), fcode)::fenv) denv benv e
+      j |> interp0 ((newenv@fenv), denv, benv) body in
+    j |> interp0 ((((fname, List.length formals), fcode)::fenv), denv, benv) e
 
   | ExpEq (e1, e2) ->
     j
-    |> interp0 fenv denv benv e1
+    |> interp0 env e1
     |> of_choice
     |> map_to_json (fun j1 ->
         j
-        |> interp0 fenv denv benv e2
+        |> interp0 env e2
         |> of_choice
         |> map_to_json (fun j2 -> Left (C.from_json (`Bool (j1 = j2))))
         |> inRight)
@@ -394,11 +401,11 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
 
   | ExpNe (e1, e2) ->
     j
-    |> interp0 fenv denv benv e1
+    |> interp0 env e1
     |> of_choice
     |> map_to_json (fun j1 ->
         j
-        |> interp0 fenv denv benv e2
+        |> interp0 env e2
         |> of_choice
         |> map_to_json (fun j2 -> Left (C.from_json (`Bool (j1 <> j2))))
         |> inRight)
@@ -406,11 +413,11 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
          
   | ExpLt (e1, e2) ->
     j
-    |> interp0 fenv denv benv e1
+    |> interp0 env e1
     |> of_choice
     |> map_to_json (fun j1 ->
         j
-        |> interp0 fenv denv benv e2
+        |> interp0 env e2
         |> of_choice
         |> map_to_json (fun j2 -> Left (C.from_json (`Bool (j1 < j2))))
         |> inRight)
@@ -418,11 +425,11 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
          
   | ExpGt (e1, e2) ->
     j
-    |> interp0 fenv denv benv e1
+    |> interp0 env e1
     |> of_choice
     |> map_to_json (fun j1 ->
         j
-        |> interp0 fenv denv benv e2
+        |> interp0 env e2
         |> of_choice
         |> map_to_json (fun j2 -> Left (C.from_json (`Bool (j1 > j2))))
         |> inRight)
@@ -430,11 +437,11 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
          
   | ExpLe (e1, e2) ->
     j
-    |> interp0 fenv denv benv e1
+    |> interp0 env e1
     |> of_choice
     |> map_to_json (fun j1 ->
         j
-        |> interp0 fenv denv benv e2
+        |> interp0 env e2
         |> of_choice
         |> map_to_json (fun j2 -> Left (C.from_json (`Bool (j1 <= j2))))
         |> inRight)
@@ -442,55 +449,55 @@ let rec interp0 (fenv : fenv_t) denv benv e (j : t) : (t, t ll_t) choice =
          
   | ExpGe (e1, e2) ->
     j
-    |> interp0 fenv denv benv e1
+    |> interp0 env e1
     |> of_choice
     |> map_to_json (fun j1 ->
         j
-        |> interp0 fenv denv benv e2
+        |> interp0 env e2
         |> of_choice
         |> map_to_json (fun j2 -> Left (C.from_json (`Bool (j1 >= j2))))
         |> inRight)
     |> inRight
          
   | ExpCond([], e) ->
-    j |> interp0 fenv denv benv e
+    j |> interp0 env e
 
   | ExpCond((e1,e2)::l, e) ->
     j
-    |> interp0 fenv denv benv e1
+    |> interp0 env e1
     |> of_choice
     |> map_to_json (function
           `Bool false ->
           j
-          |> interp0 fenv denv benv (ExpCond(l, e))
+          |> interp0 env (ExpCond(l, e))
         | _ ->
           j
-          |> interp0 fenv denv benv e2
+          |> interp0 env e2
       )
     |> inRight
 
   | ExpTryCatch (e1, e2) -> begin
       try
         j
-        |> interp0 fenv denv benv e1
+        |> interp0 env e1
         |> of_choice
         |> to_list
         |> of_list
         |> inRight
       with JQException msg ->
         (`String msg) |> C.from_json
-        |> interp0 fenv denv benv e2
+        |> interp0 env e2
     end
 
   | e -> Fmt.(failwithf "interp0: unrecognized exp %a" pp_exp e)
 
-and binop fenv denv benv f e1 e2 j =
+and binop env f e1 e2 j =
   j
-  |> interp0 fenv denv benv e1
+  |> interp0 env e1
   |> of_choice
   |> map_to_json (fun j1 ->
       j
-      |> interp0 fenv denv benv e2
+      |> interp0 env e2
       |> of_choice
       |> map_to_json (fun j2 ->
           let jr = C.from_json (f (j1, j2)) in
@@ -499,7 +506,7 @@ and binop fenv denv benv f e1 e2 j =
   |> inRight
 
 let interp ?(functions=[]) e j =
-  interp0 (functions @ !predefined_functions) [] [] e j
+  interp0 ((functions @ !predefined_functions), [], []) e j
 
 let add_function fname code =
   predefined_functions := (fname, code):: !predefined_functions
