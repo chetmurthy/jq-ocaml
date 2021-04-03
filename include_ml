@@ -41,6 +41,8 @@ open Jqutil ;;
 open Jqparse0 ;;
 #load "jqinterp.cmo";;
 open Jqinterp ;;
+#load "jqexec.cmo";;
+open Jqexec ;;
 #load "jqtest.cmo";;
 open Jqtest ;;
 

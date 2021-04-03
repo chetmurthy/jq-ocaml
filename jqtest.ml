@@ -97,6 +97,8 @@ let parsing = "parsing" >::: [
       ; ((ExpDataBind ((ExpString "foo"), "x")), {| "foo" as $x |})
       ; ((ExpReduce ((ExpConcat ((ExpInt 1), (ExpInt 2))), "n", (ExpInt 0),
                      (ExpAdd (ExpDot, (ExpDataVar "n"))))), {| reduce (1,2) as $n ( 0; . + $n) |})
+      ; ((ExpReduce ((ExpBrackets ExpDot), "n", (ExpInt 0),
+                     (ExpAdd (ExpDot, (ExpDataVar "n"))))), {| reduce .[] as $n ( 0; . + $n) |})
       ; ((ExpForeach ((ExpConcat ((ExpInt 1), (ExpInt 2))), "n", (ExpInt 0),
                       (ExpAdd (ExpDot, (ExpDataVar "n"))),
                       (ExpCollect (ExpConcat ((ExpDataVar "n"), ExpDot))))), {| foreach (1,2) as $n ( 0; . + $n; [$n, .]) |})
@@ -108,6 +110,12 @@ let parsing = "parsing" >::: [
       ; ((ExpTryCatch ((ExpDotField "a"), (ExpDotField "b"))), {| try .a catch .b |})
       ; ((ExpFuncall ("path", [ExpDot])), {| path(.) |})
       ]
+      )
+  ]
+
+let builtins = "builtins" >::: [
+    "parse" >:: (fun ctxt ->
+        ignore(Jqexec.parse_functions_from_file "builtin.jq")
       )
   ]
 
@@ -313,6 +321,7 @@ let execute = "execute" >::: [
 
 let tests = "all" >::: [
     parsing
+    ; builtins
   ; execute
 ]
 

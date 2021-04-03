@@ -11,6 +11,7 @@ type exp =
   | ExpField of exp * string
   | ExpString of string
   | ExpInt of int
+  | ExpNull
   | ExpBool of bool
   | ExpFloat of float
   | ExpDeref of exp * exp

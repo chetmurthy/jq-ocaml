@@ -14,7 +14,7 @@ type t += [
 value print_exn exn = Some (show exn) ;
 Printexc.register_printer print_exn ;
 
-value input_file = ref "" ;
+value input_file = Plexing.input_file ;
 
 value lexer = do {
   Plexer.dollar_for_antiquotation.val := False ;
@@ -41,9 +41,10 @@ EXTEND
       ] ]
     ;
 
+    ident: [ [ id = LIDENT -> id | id = UIDENT -> id ] ] ;
     funcdef: [ [
-        "def" ; id=LIDENT ; ":" ; e = exp ; ";" -> (id,[],e)
-      | "def" ; id=LIDENT ; "(" ; l = LIST1 LIDENT SEP ";" ; ")" ; ":" ; e = exp ; ";" -> (id, l, e)
+        "def" ; id=ident ; ":" ; e = exp ; ";" -> (id,[],e)
+      | "def" ; id=ident ; "(" ; l = LIST1 ident SEP ";" ; ")" ; ":" ; e = exp ; ";" -> (id, l, e)
       ] ]
     ;
     funcdefs: [ [ l = LIST1 funcdef -> l ] ] ;
@@ -99,8 +100,19 @@ EXTEND
     | "?//" NONA [
         e1 = exp ; "?//" ; e2 = exp -> ExpDesAlt e1 e2
       ]
+    | "as" [
+        e = exp ; "as" ; "$" ; id = ident -> ExpDataBind e id
+      ]
+    | "reduce" [
+        "reduce" ; e = exp LEVEL "." ; "as" ; "$" ; id = ident ;
+        "(" ; e1 = exp ; ";" ; e2 = exp ; ")" -> ExpReduce e id e1 e2
+      | "foreach" ; e = exp LEVEL "." ; "as" ; "$" ; id = ident ;
+        "(" ; e1 = exp ; ";" ; e2 = exp ; ";" ; e3 = exp ; ")" -> ExpForeach e id e1 e2 e3
+      | "foreach" ; e = exp LEVEL "." ; "as" ; "$" ; id = ident ;
+        "(" ; e1 = exp ; ";" ; e2 = exp ; ")" -> ExpForeach e id e1 e2 ExpDot
+      ]
     | "." LEFTA [
-        e = exp ; "." ; f=LIDENT ->
+        e = exp ; "." ; f=ident ->
         match e with [
           ExpDot -> failwith "..fldname is a syntax error"
         | _ -> ExpField e f
@@ -117,35 +129,29 @@ EXTEND
         | e = exp ; "[" ; "]" -> ExpBrackets e
         | e = exp ; "[:" ; e2 = exp ; "]" -> ExpSlice e None (Some e2)
         | e = exp ; "." ; "[" ; e2 = exp ; "]" -> ExpDeref e e2
-        | e = exp ; "as" ; "$" ; id = LIDENT -> ExpDataBind e id
       ]
     | "simple" [
         "." -> ExpDot
-      | "." ; f=LIDENT -> ExpDotField f
+      | "." ; f=ident -> ExpDotField f
       | "." ; f=STRING -> ExpDotField f
       | ".." -> ExpRecurse
-      | "$" ; id = LIDENT -> ExpDataVar id
+      | "$" ; id = ident -> ExpDataVar id
       | "empty" -> ExpEmpty
-      | "break" ; "$" ; l=LIDENT -> ExpBreak l
-      | "label" ; "$" ; l=LIDENT -> ExpLabel l
+      | "break" ; "$" ; l=ident -> ExpBreak l
+      | "label" ; "$" ; l=ident -> ExpLabel l
       | s = STRING -> ExpString s
       | "@" ; id = LIDENT -> ExpFormat id
       | "(" ; e = exp ; ")" -> e
       | "[" ; e = exp ; "]" -> ExpCollect e
       | "[" ; "]" -> ExpArray
       | "{" ; l = LIST0 dict_pair SEP "," ; "}" -> ExpDict l
-      | f=LIDENT ; "(" ; l = LIST1 exp SEP ";" ; ")" -> ExpFuncall f l
-      | f=LIDENT -> ExpFuncall f []
+      | f=ident ; "(" ; l = LIST1 exp SEP ";" ; ")" -> ExpFuncall f l
+      | f=ident -> ExpFuncall f []
       | n = INT -> ExpInt (int_of_string n)
+      | "null" -> ExpNull
       | "true" -> ExpBool True
       | "false" -> ExpBool False
       | n = FLOAT -> ExpFloat (float_of_string n)
-      | "reduce" ; e = exp LEVEL "simple" ; "as" ; "$" ; id = LIDENT ;
-        "(" ; e1 = exp ; ";" ; e2 = exp ; ")" -> ExpReduce e id e1 e2
-      | "foreach" ; e = exp LEVEL "simple" ; "as" ; "$" ; id = LIDENT ;
-        "(" ; e1 = exp ; ";" ; e2 = exp ; ";" ; e3 = exp ; ")" -> ExpForeach e id e1 e2 e3
-      | "foreach" ; e = exp LEVEL "simple" ; "as" ; "$" ; id = LIDENT ;
-        "(" ; e1 = exp ; ";" ; e2 = exp ; ")" -> ExpForeach e id e1 e2 ExpDot
       | "if" ; e1 = exp ; "then" ; e2 = exp ;
         l = LIST0 [ "elif" ; e3 = exp ; "then"; e4 = exp  -> (e3, e4) ] ;
         "else" ; e = exp ; "end" -> ExpCond [(e1,e2)::l] e
@@ -164,16 +170,22 @@ value parse_exp_eoi = Grammar.Entry.parse exp_eoi ;
 value parse_funcdefs = Grammar.Entry.parse funcdefs ;
 value parse_funcdefs_eoi = Grammar.Entry.parse funcdefs_eoi ;
 
-value parse_string pf s =
+value parse_string pf s = do {
+  input_file.val := "<string-input>" ;
   pf (Stream.of_string s)
+}
 ;
 
-value parse_channel pf ic =
+value parse_channel pf ic = do {
+  input_file.val := "<channel-input>" ;
   pf (Stream.of_channel ic)
+}
 ;
 
-value parse_file pf fname =
+value parse_file pf fname = do {
+  input_file.val := fname ;
   let ic = open_in fname in
   let rv = pf (Stream.of_channel ic) in 
   do { close_in ic ; rv }
+}
 ;
