@@ -38,6 +38,7 @@ module type INTERP = sig
   val interp : exp -> closure_t
   val add_function : string -> (closure_t list -> closure_t) -> unit
   val interp_tuple : (closure_t) list -> closure_t
+  val exec : exp -> Yojson.Basic.t list -> t list
 end
 
 
@@ -510,6 +511,13 @@ let interp_tuple l j : (t, t ll_t) choice =
   in
   j
   |> edrec l
+
+let exec e l =
+  l
+  |> List.map C.from_json
+  |> of_list
+  |> map (interp e)
+  |> to_list
 
 end
 
