@@ -34,9 +34,11 @@ let exec s js =
   let e = of_string_exn s in
   js
   |> List.map Yojson.Basic.from_string
+  |> List.map I.C.from_json
   |> of_list
-  |> map (interp e)
+  |> map (I.interp e)
   |> to_list
+  |> List.map I.C.to_json
   |> List.map Yojson.Basic.to_string
 
 type json =
