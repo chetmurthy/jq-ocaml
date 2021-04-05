@@ -328,6 +328,8 @@ let execute = "execute" >::: [
   ; "ok-2" >:: (fun ctxt ->
       ()
 
+    ; success ~builtins:true ([{|[1,2,3]|}], {|_sort_by_impl(map([.]))|}, [{|[3,2,1]|}])
+    ; success ~builtins:true ([{|[1,2,3]|}], {|sort_by(.)|}, [{|[3,2,1]|}])
     ; assert_equal [{|0|}] (exec {|0|} [{|0|}])
     )
   ; "errors-2" >:: (fun ctxt ->

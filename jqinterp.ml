@@ -901,3 +901,28 @@ I.add_function ("halt",0)
       )
   )
 ;;
+
+I.add_function ("_sort_by_impl",1)
+  (function
+      [f0] ->
+      (function j ->
+         j
+         |> I.C.to_json
+         |>  (function (`List vl) as vj ->
+             j
+             |> f0
+             |> of_choice
+             |> I.map_to_json (function (`List kl) as kj ->
+                 if List.length vl <> List.length kl then
+                   jqexception "_sort_by_impl: Internal error: value and key lists of differing length" ;
+                 let l = List.map2 (fun k v -> (k,v)) kl vl in
+                 let l = List.sort (fun (k1, _) (k2,_) -> Stdlib.compare k1 k2) l in
+                 let l = List.map snd l in
+                 Left(I.C.from_json (`List l))
+               )
+           )
+         |>
+         inRight
+      )
+  )
+;;
