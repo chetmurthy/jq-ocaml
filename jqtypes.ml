@@ -60,3 +60,12 @@ type exp =
 
 and funcdef = string * string list * exp
  [@@deriving show { with_path = false },eq]
+
+type token =
+    Ident of string
+  | Spcl of string
+  | Keyw of string
+  | String of string
+  | Integer of string
+  | Float of string
+  | EOF

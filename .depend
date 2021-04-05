@@ -42,7 +42,15 @@ lazy_reclist.cmo : \
     jqtypes.cmo
 lazy_reclist.cmx : \
     jqtypes.cmx
-jqparse0.cmo : \
+jqlexing.cmo : \
+    jqutil.cmo \
     jqtypes.cmo
-jqparse0.cmx : \
+jqlexing.cmx : \
+    jqutil.cmx \
     jqtypes.cmx
+jqparse0.cmo : \
+    jqtypes.cmo \
+    jqlexing.cmo
+jqparse0.cmx : \
+    jqtypes.cmx \
+    jqlexing.cmx

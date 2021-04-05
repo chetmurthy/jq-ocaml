@@ -56,6 +56,7 @@ let rec interp0 env e (j : t) : (t, t ll_t) choice =
     ExpDot -> Right (of_list [j])
 
   | ExpInt n -> Right (of_list [C.from_json (`Int n)])
+  | ExpFloat n -> Right (of_list [C.from_json (`Float n)])
 
   | ExpNull -> Right (of_list [C.from_json `Null])
 

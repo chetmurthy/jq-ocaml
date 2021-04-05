@@ -37,6 +37,8 @@ open Jqtypes ;;
 open Lazy_reclist ;;
 #load "jqutil.cmo";;
 open Jqutil ;;
+#load "jqlexing.cmo";;
+open Jqlexing ;;
 #load "jqparse0.cmo";;
 open Jqparse0 ;;
 #load "jqinterp.cmo";;

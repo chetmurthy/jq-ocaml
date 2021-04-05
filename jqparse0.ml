@@ -2,6 +2,7 @@ open Asttools ;
 open Pa_ppx_base.Pp_MLast ;
 open Pa_ppx_runtime.Exceptions ;
 open Jqtypes ;
+open Jqlexing ;
 
 type t += [
     Exc of Ploc.t and t[@rebind_to Ploc.Exc;][@name "Ploc.Exc";]
@@ -14,14 +15,55 @@ type t += [
 value print_exn exn = Some (show exn) ;
 Printexc.register_printer print_exn ;
 
-value input_file = Plexing.input_file ;
+value positions_to_loc ?{comments=""} (spos, epos) =
+  let open Lexing in
+  Ploc.make_loc spos.pos_fname spos.pos_lnum spos.pos_bol (spos.pos_cnum, epos.pos_cnum) comments
+;
 
-value lexer = do {
-  Plexer.dollar_for_antiquotation.val := False ;
-  let rv = Plexer.gmake() in
-  Plexer.dollar_for_antiquotation.val := True ;
-  rv
-} ;
+value convert_token (tok, pos) =
+  let pos = positions_to_loc pos in
+  let tok = match tok with [
+    Spcl s -> ("",s)
+  | Keyw s -> ("",s)
+  | Ident s -> ("IDENT",s)
+  | Integer n -> ("INT",n)
+  | Float n -> ("FLOAT",n)
+  | String s -> ("STRING", Unescape.jsonstring s)
+  | EOF -> ("EOI","")
+  ]
+  in
+  (tok, pos)
+;
+
+value lex_string s =
+  let lexbuf = Sedlexing.Latin1.from_gen (gen_of_string s) in
+  let rec lexrec acc =
+    match convert_token (rawtoken lexbuf) with [
+      (("EOI",_),_) as t -> List.rev [t::acc]
+    | t -> lexrec [t::acc]
+    ] in lexrec []
+;
+
+value input_file = Plexing.input_file ;
+value lexer_func_of_sedlex_located lexfun cs =
+  let read1 () =
+    try Some (Stream.next cs) with [ Stream.Failure -> None ] in
+  let lexbuf = Sedlexing.Latin1.from_gen read1
+  in
+  let next_token_func () = convert_token (lexfun lexbuf) in do {
+    Sedlexing.set_filename lexbuf input_file.val ;
+    Plexing.make_stream_and_location next_token_func
+  }
+;
+
+
+value lexer = lexer_func_of_sedlex_located rawtoken ;
+value lexer = {Plexing.tok_func = lexer;
+ Plexing.tok_using _ = (); Plexing.tok_removing _ = ();
+ Plexing.tok_match = Plexing.default_match;
+ Plexing.tok_text = Plexing.lexer_text;
+ Plexing.tok_comm = None} ;
+
 value g = Grammar.gcreate lexer;
 value (exp : Grammar.Entry.e exp) = Grammar.Entry.create g "exp";
 value (exp_eoi : Grammar.Entry.e exp) = Grammar.Entry.create g "exp_eoi";
@@ -35,13 +77,13 @@ EXTEND
     ;
 
     dict_pair:
-      [ [ id = LIDENT ; ":" ; e = exp LEVEL "//" -> (ExpString id, e)
-        | id = LIDENT -> (ExpString id, ExpDotField id)
+      [ [ id = IDENT ; ":" ; e = exp LEVEL "//" -> (ExpString id, e)
+        | id = IDENT -> (ExpString id, ExpDotField id)
         | e1 = exp ; ":" ; e2 = exp LEVEL "//" -> (e1,e2)
       ] ]
     ;
 
-    ident: [ [ id = LIDENT -> id | id = UIDENT -> id ] ] ;
+    ident: [ [ id = IDENT -> id | id = UIDENT -> id ] ] ;
     funcdef: [ [
         "def" ; id=ident ; ":" ; e = exp ; ";" -> (id,[],e)
       | "def" ; id=ident ; "(" ; l = LIST1 ident SEP ";" ; ")" ; ":" ; e = exp ; ";" -> (id, l, e)
@@ -140,7 +182,7 @@ EXTEND
       | "break" ; "$" ; l=ident -> ExpBreak l
       | "label" ; "$" ; l=ident -> ExpLabel l
       | s = STRING -> ExpString s
-      | "@" ; id = LIDENT -> ExpFormat id
+      | "@" ; id = IDENT -> ExpFormat id
       | "(" ; e = exp ; ")" -> e
       | "[" ; e = exp ; "]" -> ExpCollect e
       | "[" ; "]" -> ExpArray
@@ -171,7 +213,7 @@ value parse_funcdefs = Grammar.Entry.parse funcdefs ;
 value parse_funcdefs_eoi = Grammar.Entry.parse funcdefs_eoi ;
 
 value parse_string pf s = do {
-  input_file.val := "<string-input>" ;
+  input_file.val := s ;
   pf (Stream.of_string s)
 }
 ;
