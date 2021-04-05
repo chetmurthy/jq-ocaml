@@ -83,10 +83,17 @@ EXTEND
       ] ]
     ;
 
-    ident: [ [ id = IDENT -> id | id = UIDENT -> id ] ] ;
+    ident: [ [ id = IDENT -> id ] ] ;
+    ident_or_datavar: [ [ id = ident -> Left id | "$" ; id = ident -> Right id ] ] ;
     funcdef: [ [
         "def" ; id=ident ; ":" ; e = exp ; ";" -> (id,[],e)
-      | "def" ; id=ident ; "(" ; l = LIST1 ident SEP ";" ; ")" ; ":" ; e = exp ; ";" -> (id, l, e)
+      | "def" ; id=ident ; "(" ; l = LIST1 ident_or_datavar SEP ";" ; ")" ; ":" ; e = exp ; ";" ->
+        let (l,e) = List.fold_right (fun id (l,e) ->
+            match id with [
+              Left id -> ([id :: l], e)
+            | Right id -> ([id :: l], ExpSeq (ExpDataBind (ExpDataVar id) id) e)
+            ]) l ([], e) in
+        (id, l, e)
       ] ]
     ;
     funcdefs: [ [ l = LIST1 funcdef -> l ] ] ;

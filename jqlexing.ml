@@ -19,7 +19,7 @@ let frac = [%sedlex.regexp? '.' , (Star digit)]
 let ne_frac = [%sedlex.regexp? '.' , (Plus digit)]
 let exp = [%sedlex.regexp? ('e' | 'E') , (Opt ('-' | '+')) , (Plus digit)]
 let decimal_float_number = [%sedlex.regexp? (Opt '-') , ((int , (Opt frac) , (Opt exp)) | (ne_frac, Opt exp))]
-let json_number = [%sedlex.regexp? (Opt '-') , int, Opt ne_frac, Opt exp]
+let json_number = [%sedlex.regexp? int, Opt ne_frac, Opt exp]
 
 let letter = [%sedlex.regexp? 'a'..'z'|'A'..'Z']
 
@@ -48,7 +48,7 @@ let readn n lb =
 let rec rawtoken buf =
   let pos() = Sedlexing.lexing_positions buf in
   match%sedlex buf with
-  | Opt '-' , int -> (Integer (Sedlexing.Latin1.lexeme buf),pos())
+  | int -> (Integer (Sedlexing.Latin1.lexeme buf),pos())
   | json_number -> (Float (Sedlexing.Latin1.lexeme buf),pos())
   | json_string -> (String (Sedlexing.Latin1.lexeme buf),pos())
   | "[" -> (Spcl "[", pos())
@@ -71,6 +71,8 @@ let rec rawtoken buf =
   | "=" -> (Spcl "=",pos())
   | "==" -> (Spcl "==",pos())
   | "!=" -> (Spcl "!=",pos())
+  | "|=" -> (Spcl "|=",pos())
+  | "//=" -> (Spcl "//=",pos())
   | ":" -> (Spcl ":",pos())
   | ";" -> (Spcl ";",pos())
   | "," -> (Spcl ",",pos())
@@ -95,6 +97,8 @@ let rec rawtoken buf =
   | "catch" -> (Keyw"catch",pos())
   | "break" -> (Keyw"break",pos())
   | "label" -> (Keyw"label",pos())
+  | "and" -> (Keyw"and",pos())
+  | "or" -> (Keyw"or",pos())
   | ident -> (Ident (Sedlexing.Latin1.lexeme buf),pos())
   | Plus (ws|comment) -> rawtoken buf
   | eof -> (EOF,pos())
