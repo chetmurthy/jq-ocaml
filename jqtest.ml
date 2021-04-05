@@ -330,6 +330,14 @@ let execute = "execute" >::: [
 
     ; success ~builtins:true ([{|[1,2,3]|}], {|_sort_by_impl(map([.]))|}, [{|[3,2,1]|}])
     ; success ~builtins:true ([{|[1,2,3]|}], {|sort_by(.)|}, [{|[3,2,1]|}])
+    ; success ~builtins:true (
+        [{|[[{"a":1,"b":1},{"a":1,"b":2}],[{"a":2,"b":3}]]|}]
+      , {|_group_by_impl(map([.a]))|}
+      , [{|[{"a":1,"b":1},{"a":1,"b":2},{"a":2,"b":3}]|}])
+    ; success ~builtins:true (
+        [{|[[{"a":1,"b":1},{"a":1,"b":2}],[{"a":2,"b":3}]]|}]
+      , {|group_by(.a)|}
+      , [{|[{"a":1,"b":1},{"a":1,"b":2},{"a":2,"b":3}]|}])
     ; assert_equal [{|0|}] (exec {|0|} [{|0|}])
     )
   ; "errors-2" >:: (fun ctxt ->
