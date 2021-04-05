@@ -119,6 +119,22 @@ let builtins = "builtins" >::: [
       )
   ]
 
+let misc = "misc" >::: [
+    "halt-1" >:: (fun ctxt ->
+        let open Unix in 
+        let cpid = fork () in
+        if 0 == cpid then begin
+          ignore(exec "halt_error(5)" ["null"]) ;
+          exit(-1)
+        end
+        else if cpid > 0 then
+          let (_, st) = waitpid [] cpid in
+          match st with
+          WEXITED n -> assert_equal ~msg:"halt succeeded, but wrong error-code" ~printer:string_of_int 5 n
+        else assert_bool "halt-1: forking failed" false
+      )
+  ]
+
 type string_list = string list [@@deriving show,eq]
 
 let printer = show_string_list
@@ -322,7 +338,8 @@ let execute = "execute" >::: [
 let tests = "all" >::: [
     parsing
     ; builtins
-  ; execute
+    ; execute
+    ; misc
 ]
 
 if not !Sys.interactive then

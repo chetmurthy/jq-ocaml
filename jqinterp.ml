@@ -812,6 +812,7 @@ I.add_function ("setpath",2)
       )
   )
 ;;
+
 I.add_function ("delpaths",1)
   (function
       [f0] ->
@@ -873,6 +874,20 @@ I.add_function ("path",1)
               | (_, None) -> jqexception "path: invalid path-expression"
               | _ -> Right nil
             )
+          |> inRight
+      )
+  )
+;;
+
+I.add_function ("halt_error",1)
+  (function
+      [f0] ->
+      (function j ->
+          j
+          |> f0
+          |> of_choice
+          |> I.map_to_json (function `Int n ->
+              Stdlib.exit n)
           |> inRight
       )
   )
