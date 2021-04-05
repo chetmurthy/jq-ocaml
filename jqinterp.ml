@@ -373,9 +373,10 @@ let rec interp0 env e (j : t) : (t, t ll_t) choice =
     let (fenv, denv, benv) = env in
     let argcl = List.map (fun e -> interp0 env e) l in
     let code =
-      match List.assoc (f, List.length l) fenv with
+      let nargs = List.length l in
+      match List.assoc (f, nargs) fenv with
         f -> f
-      | exception Not_found -> Fmt.(failwithf "interp: function %a not found" Dump.string f)
+      | exception Not_found -> Fmt.(failwithf "interp: function %a/%n not found" Dump.string f nargs)
     in
     j
     |> code argcl
@@ -696,14 +697,13 @@ I.add_function ("select",1)
 ;;
 
 
-I.add_function ("error",1)
+I.add_function ("error",0)
   (function
-      [f0] ->
+      [] ->
       (function j ->
          j
-         |> f0
-         |> of_choice
-         |> I.map_to_json (function (`String msg) -> jqexception msg)
+         |> I.C.to_json
+         |> (function (`String msg) -> jqexception msg)
          |> inRight
       )
   )
@@ -889,6 +889,15 @@ I.add_function ("halt_error",1)
           |> I.map_to_json (function `Int n ->
               Stdlib.exit n)
           |> inRight
+      )
+  )
+;;
+
+I.add_function ("halt",0)
+  (function
+      [] ->
+      (function j ->
+         Stdlib.exit 0
       )
   )
 ;;

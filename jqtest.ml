@@ -119,19 +119,24 @@ let builtins = "builtins" >::: [
       )
   ]
 
+let check_halt ?(builtins=false) name s want =
+  let open Unix in 
+  let cpid = fork () in
+  if 0 == cpid then begin
+    ignore(exec ~builtins s ["null"]) ;
+    exit(-1)
+  end
+  else if cpid > 0 then
+    let (_, st) = waitpid [] cpid in
+    match st with
+      WEXITED n -> assert_equal ~msg:"halt succeeded, but wrong error-code" ~printer:string_of_int want n
+  else assert_bool Fmt.(str "%s: forking failed" name) false
+
 let misc = "misc" >::: [
     "halt-1" >:: (fun ctxt ->
-        let open Unix in 
-        let cpid = fork () in
-        if 0 == cpid then begin
-          ignore(exec "halt_error(5)" ["null"]) ;
-          exit(-1)
-        end
-        else if cpid > 0 then
-          let (_, st) = waitpid [] cpid in
-          match st with
-          WEXITED n -> assert_equal ~msg:"halt succeeded, but wrong error-code" ~printer:string_of_int 5 n
-        else assert_bool "halt-1: forking failed" false
+        check_halt "halt-1" "halt_error(3)" 3
+      ; check_halt ~builtins:true "halt-1" "halt_error" 5
+      ; check_halt "halt-1" "halt" 0
       )
   ]
 
@@ -139,21 +144,21 @@ type string_list = string list [@@deriving show,eq]
 
 let printer = show_string_list
 
-let success (output, exp, input) =
+let success ?(builtins=false) (output, exp, input) =
   let msg = Fmt.(str "exec test for code << %s >>" exp) in
-  assert_equal ~msg ~printer output (exec exp input)
+  assert_equal ~msg ~printer output (exec ~builtins exp input)
 
-let success_canon (output, exp, input) =
+let success_canon ?(builtins=false) (output, exp, input) =
   let msg = Fmt.(str "canonicalizing exec test for code << %s >>" exp) in
   assert_equal ~msg ~printer
     (List.sort Stdlib.compare output)
-    (List.sort Stdlib.compare (exec exp input))
+    (List.sort Stdlib.compare (exec ~builtins exp input))
 
-let failure_pattern (pattern, code, input) =
+let failure_pattern ?(builtins=false) (pattern, code, input) =
   let msg = Fmt.(str "failure exec test for code << %s >>" code) in
     assert_raises_exn_pattern ~msg
     pattern
-    (fun () -> exec code input)
+    (fun () -> exec ~builtins code input)
 
 let execute = "execute" >::: [
     "ok" >:: (fun ctxt -> List.iter success [
@@ -254,6 +259,11 @@ let execute = "execute" >::: [
       ; ([], {|try .a|}, [{|[0]|}])
       ]
       )
+  ; "ok-builtins" >:: (fun ctxt -> List.iter (success ~builtins:true) [
+        ([], ".", [])
+      ; (["0"], "0", ["null"])
+      ]
+      )
   ; "ok-canon" >:: (fun ctxt -> List.iter success_canon [
         ([{|{"a":{"b":1},"c":"d","e":[2,3]}|}; {|"d"|}; {|{"b":1}|}; "1"; "[2,3]"; "2"; "3"],
          "..", [{| {"a":{"b":1}, "c":"d", "e":[2,3]} |}])
@@ -272,7 +282,10 @@ let execute = "execute" >::: [
        {|.a + .b|}, [{| {"a": 1, "b":"0"} |}])
     ; ("interp0: exp (ExpDataBind ((ExpString \"foo\"), \"x\")) MUST be part of a sequence of filters",
        {|"foo" as $x|}, [{| null |}])
-    ; ("foo",
+    ]
+      )
+  ; "errors-builtin" >:: (fun ctxt -> List.iter (failure_pattern ~builtins:true) [
+      ("foo",
        {|error(.)|}, [{|"foo"|}])
     ]
       )
