@@ -684,7 +684,7 @@ I.add_function ("in",1)
       )
   )
 ;;
-
+(*
 I.add_function ("select",1)
   (function
       [f0] ->
@@ -695,7 +695,7 @@ I.add_function ("select",1)
          |> I.map_to_json (function `Bool false -> Right(of_list []) | _ -> Left j)
          |> inRight))
 ;;
-
+*)
 
 I.add_function ("error",0)
   (function
